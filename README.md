@@ -207,20 +207,27 @@ TTS_PROVIDER=cit
 
 # --- CIT Voice Studio (mặc định chạy ở cổng 8001) ---
 CIT_BASE_URL=http://127.0.0.1:8001
-CIT_API_KEY=            # chỉ cần khi gọi từ máy khác trong LAN
-CIT_VOICE=Hải Đăng      # tên giọng như GET /voices, vd Hải Đăng, Trúc Ly, Mai Anh
+# Chỉ cần khi gọi từ máy khác trong LAN
+CIT_API_KEY=
+# Tên giọng như GET /voices, vd Hải Đăng, Trúc Ly, Mai Anh
+CIT_VOICE=Hải Đăng
 CIT_SPEED=1.0
 
 # --- Edge TTS ---
-EDGE_VOICE=vi-VN-NamMinhNeural   # hoặc vi-VN-HoaiMyNeural (nữ)
+# Hoặc vi-VN-HoaiMyNeural (nữ)
+EDGE_VOICE=vi-VN-NamMinhNeural
 EDGE_SPEED=1.05
 
 # --- Vbee ---
 VBEE_APP_ID=...
 VBEE_ACCESS_TOKEN=...
-VBEE_VOICE=n_hanoi_male_protrainer_education_vc   # dán nguyên mã giọng copy từ Vbee
+# Dán nguyên mã giọng copy từ Vbee
+VBEE_VOICE=n_hanoi_male_protrainer_education_vc
 VBEE_SPEED=1.1
 ```
+
+> [!TIP]
+> Nên viết ghi chú trên một dòng riêng. Ghi chú cùng dòng (`KEY=giá trị  # ghi chú`) vẫn được bỏ qua khi đọc, nhưng nếu giá trị có dấu `#` thì đặt trong ngoặc kép: `KEY="abc#123"`.
 
 Mỗi engine một nhóm cấu hình riêng; đổi engine chỉ cần sửa `TTS_PROVIDER`. Biến cũ `TTS_VOICE` / `TTS_SPEED` vẫn được đọc làm dự phòng.
 

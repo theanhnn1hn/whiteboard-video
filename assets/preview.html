@@ -139,10 +139,19 @@ const S = { scenes: [], idx: -1, cfg: null, cfgHandle: null, dirHandle: null,
 
 const els = () => S.cfg ? S.cfg.elements : [];
 const endMs = e => e.reveal.startMs + e.reveal.durationMs;
-function totalMs() {
-  const arr = els();
+function totalMsOf(cfg) {
+  const arr = cfg && Array.isArray(cfg.elements) ? cfg.elements : [];
   const maxEnd = arr.length ? Math.max(...arr.map(endMs)) : 0;
-  return Math.max(S.cfg && S.cfg.sceneDurationMs || 0, maxEnd + 500, 1000);
+  return Math.max(cfg && cfg.sceneDurationMs || 0, maxEnd + 500, 1000);
+}
+const totalMs = () => totalMsOf(S.cfg);
+// Thứ tự vẽ thật = thứ tự reveal.startMs (renderer cũng sắp như vậy). Giữ mảng elements
+// luôn theo thứ tự này và đánh lại sequence để danh sách, số trên khung và video khớp nhau.
+const byStart = (a, b) => (a.reveal.startMs - b.reveal.startMs) || ((a.sequence || 0) - (b.sequence || 0));
+function normalizeOrder(cfg) {
+  if (!cfg || !Array.isArray(cfg.elements)) return;
+  cfg.elements.sort(byStart);
+  cfg.elements.forEach((e, i) => e.sequence = i + 1);
 }
 
 // ---------- 打开文件夹 ----------
@@ -186,7 +195,7 @@ async function loadPairs(names, getFile, getHandle) {
   if (!scenes.length) { toast('目录里没有图片', true); return; }
   S.scenes = scenes; S.dirty.clear();
   const sel = $('sceneSel');
-  sel.innerHTML = scenes.map((s, i) => `<option value="${i}">${i+1}. ${s.name}${s.hasConfig ? '' : '（未标注）'}</option>`).join('');
+  sel.innerHTML = scenes.map((s, i) => `<option value="${i}">${i+1}. ${escapeHtml(s.name)}${s.hasConfig ? '' : '（未标注）'}</option>`).join('');
   sel.disabled = $('prevBtn').disabled = $('nextBtn').disabled = false;
   $('sceneCount').textContent = `共 ${scenes.length} 张（${scenes.filter(s=>s.hasConfig).length} 张带标注）`;
   $('hint').hidden = true; canvas.hidden = false; $('side').hidden = false;
@@ -210,6 +219,7 @@ function loadScene(i) {
     if (!sc.cfg) sc.cfg = { sceneId: sc.name, canvas: { width: img.naturalWidth, height: img.naturalHeight }, sceneDurationMs: 8000, elements: [] };
     if (!sc.cfg.canvas || !sc.cfg.canvas.width) sc.cfg.canvas = { width: img.naturalWidth, height: img.naturalHeight };
     if (!Array.isArray(sc.cfg.elements)) sc.cfg.elements = [];
+    normalizeOrder(sc.cfg);
     S.cfg = sc.cfg; S.cfgHandle = sc.cfgHandle;
     samplePaper();
     updateSaveBtns(); syncEditor(); renderList(); renderSubs(); setTime(0); // 默认停在 0（未播放）→ 显示完整图片
@@ -256,7 +266,7 @@ function render() {
     ctx.drawImage(S.source, 0, 0, w, h);
   } else {
     let active = null;
-    const ordered = arr.slice().sort((a, b) => a.reveal.startMs - b.reveal.startMs);
+    const ordered = arr.slice().sort(byStart);
     mask.width = w; mask.height = h; maskCtx.clearRect(0, 0, w, h);
     ordered.forEach((e, index) => {
       const p = getProgress(S.time, e); if (!p) return;
@@ -322,9 +332,19 @@ function renderList() {
 }
 function reorder(from, to) {
   const arr = els(); if (from < 0 || to < 0 || from === to) return;
+  // Mỗi vị trí trong danh sách là một "khung thời gian" (bắt đầu, thời lượng, câu phụ đề) đã khớp
+  // với lời đọc. Kéo đổi thứ tự = các vùng đổi chỗ cho nhau trong các khung đó, nên thứ tự vẽ
+  // trong video đổi theo mà nhịp lời đọc giữ nguyên. (Trước đây chỉ đánh lại sequence, renderer
+  // vẫn vẽ theo startMs nên kéo thả không có tác dụng.)
+  const slots = arr.map(e => ({ startMs: e.reveal.startMs, durationMs: e.reveal.durationMs, subtitle: e.subtitle }));
   const [m] = arr.splice(from, 1); arr.splice(to, 0, m);
-  arr.forEach((e, i) => e.sequence = i + 1);       // 顺序即 sequence
+  arr.forEach((e, i) => {
+    e.sequence = i + 1;
+    e.reveal.startMs = slots[i].startMs; e.reveal.durationMs = slots[i].durationMs;
+    if (slots[i].subtitle !== undefined) e.subtitle = slots[i].subtitle;
+  });
   S.sel = to; markDirty(); syncEditor(); renderList(); renderSubs(); render();
+  toast('Đã đổi thứ tự vẽ: các vùng đổi chỗ trong các khung thời gian (giữ nguyên mốc và phụ đề)');
 }
 
 // ---------- 字幕列表（选中模块自动高亮）----------
@@ -359,17 +379,20 @@ function syncHandPath(e) {
 }
 function applyEditor() {
   const e = els()[S.sel]; if (!e) return;
+  const W = S.cfg.canvas.width, H = S.cfg.canvas.height;
   e.label = $('f_label').value || e.label;
-  e.region.x = Math.max(0, Math.round(+$('f_x').value || 0));
-  e.region.y = Math.max(0, Math.round(+$('f_y').value || 0));
-  e.region.width = Math.max(1, Math.round(+$('f_w').value || 1));
-  e.region.height = Math.max(1, Math.round(+$('f_h').value || 1));
+  e.region.x = clamp(Math.round(+$('f_x').value || 0), 0, W - 1);
+  e.region.y = clamp(Math.round(+$('f_y').value || 0), 0, H - 1);
+  e.region.width = clamp(Math.round(+$('f_w').value || 1), 1, W - e.region.x);
+  e.region.height = clamp(Math.round(+$('f_h').value || 1), 1, H - e.region.y);
   e.reveal.direction = $('f_dir').value;
   let start = Math.max(0, Math.round(+$('f_start').value || 0));
   let end = Math.max(start + 100, Math.round(+$('f_end').value || 0));
   e.reveal.startMs = start; e.reveal.durationMs = end - start;
   $('f_dur').value = e.reveal.durationMs; $('f_end').value = end;
   syncHandPath(e);
+  // Sửa mốc bắt đầu có thể đổi thứ tự vẽ → sắp lại, giữ vùng đang chọn
+  normalizeOrder(S.cfg); S.sel = els().indexOf(e);
   markDirty(); renderList(); renderSubs(); setTime(Math.min(S.time, totalMs())); render();
 }
 F.forEach(id => { if (id !== 'f_dur') $(id).addEventListener('input', applyEditor); });
@@ -385,7 +408,7 @@ $('addBtn').addEventListener('click', () => {
     region: { x: Math.round(W*0.1), y: Math.round(H*0.1), width: Math.round(W*0.25), height: Math.round(H*0.3) },
     reveal: { direction: 'top_to_bottom', startMs: lastEnd + 200, durationMs: 2000, maskPaddingPx: 22, protectedRegions: [] },
     handPath: {} };
-  syncHandPath(e); arr.push(e); S.sel = arr.length - 1; markDirty(); syncEditor(); renderList(); renderSubs(); render();
+  syncHandPath(e); arr.push(e); normalizeOrder(S.cfg); S.sel = arr.indexOf(e); markDirty(); syncEditor(); renderList(); renderSubs(); render();
 });
 $('delBtn').addEventListener('click', () => {
   const arr = els(); if (S.sel < 0 || S.sel >= arr.length) return;
@@ -445,7 +468,8 @@ $('saveAllBtn').addEventListener('click', async () => { for (const i of [...S.di
 async function saveScene(i) {
   const sc = S.scenes[i];
   // 保存前把总时长对齐到当前编排（最后一个区域结束 + 0.5s 凝视），供渲染器使用
-  if (i === S.idx && sc.cfg.elements && sc.cfg.elements.length) sc.cfg.sceneDurationMs = totalMs();
+  // (trước đây chỉ cảnh đang mở được cập nhật khi bấm "Lưu tất cả")
+  if (sc.cfg.elements && sc.cfg.elements.length) sc.cfg.sceneDurationMs = totalMsOf(sc.cfg);
   const text = JSON.stringify(sc.cfg, null, 2);
   try {
     let handle = sc.cfgHandle;

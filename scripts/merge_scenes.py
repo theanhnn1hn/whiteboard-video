@@ -24,7 +24,9 @@ def _ffmpeg_concat_copy(inputs: list[Path], output: Path) -> bool:
         return False
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as f:
         for p in inputs:
-            f.write(f"file '{p.resolve().as_posix()}'\n")
+            # cú pháp concat của ffmpeg: dấu ' trong đường dẫn phải viết thành '\''
+            quoted = p.resolve().as_posix().replace("'", "'\\''")
+            f.write(f"file '{quoted}'\n")
         list_path = Path(f.name)
     try:
         res = subprocess.run(

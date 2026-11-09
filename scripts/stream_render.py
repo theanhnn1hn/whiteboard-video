@@ -55,7 +55,7 @@ class Config:
     fps: int = 60                  # 高频输出让笔尖移动更接近连续书写
     grid_edge: int = 10            # 更小的网格减少线稿揭示的块状感
     sample_step: int = 2           # 笔尖轨迹的像素采样间距
-    cap_long_edge: int = 1080      # 输入图长边上限
+    cap_long_edge: int = 1920      # 输出长边像素（16:9 原图 → 1920x1080）
     brush_radius: int = 40         # 添彩阶段圆形墨刷半径
     ink_weight: int = 2            # 线稿段权重：为观察笔迹留出更多时间
     color_weight: int = 1          # 添彩段权重
@@ -68,7 +68,7 @@ class Config:
     # 这里描述的是真实落墨接触点，而非手部图像的外框。
     tip_anchor_x: float = 0.0
     tip_anchor_y: float = 0.0
-    canvas_hex: str = "#F6F1E3"    # 画布底色
+    canvas_hex: str = "#F5EBD7"    # 画布底色：与 SKILL.md 规定的纸色、字幕底框颜色一致
     match_bg: bool = True          # 把原图背景染成画布底色，使起笔/上色背景一致
     match_bg_threshold: int = 28   # 与原图背景色差异小于此值视为背景（BGR 三通道和）
     steps_per_frame: int = 4       # 每帧推进的落点数基准
@@ -1174,11 +1174,21 @@ class StreamBoardRenderer:
         self, start: tuple[int, int], end: tuple[int, int]
     ) -> None:
         """Reveal only the original line-art pixels touched by one pen movement."""
-        segment = np.zeros((self.out_h, self.out_w), dtype=np.uint8)
+        # 只在线段包围盒内运算，避免每段都分配整幅掩码
         thickness = max(1, self.cfg.ink_reveal_radius * 2 + 1)
-        cv2.line(segment, start, end, 255, thickness=thickness, lineType=cv2.LINE_AA)
-        revealed = (segment > 0) & self.ink_pixels
-        self.drawn[revealed] = self.ink_paint[revealed]
+        pad = thickness // 2 + 2
+        x0 = max(0, min(start[0], end[0]) - pad)
+        y0 = max(0, min(start[1], end[1]) - pad)
+        x1 = min(self.out_w, max(start[0], end[0]) + pad + 1)
+        y1 = min(self.out_h, max(start[1], end[1]) + pad + 1)
+        if x1 <= x0 or y1 <= y0:
+            return
+        segment = np.zeros((y1 - y0, x1 - x0), dtype=np.uint8)
+        cv2.line(segment, (start[0] - x0, start[1] - y0), (end[0] - x0, end[1] - y0), 255,
+                 thickness=thickness, lineType=cv2.LINE_AA)
+        revealed = (segment > 0) & self.ink_pixels[y0:y1, x0:x1]
+        target = self.drawn[y0:y1, x0:x1]
+        target[revealed] = self.ink_paint[y0:y1, x0:x1][revealed]
 
     def _ink_stamp(self, cell: tuple[int, int]) -> None:
         r, c = cell

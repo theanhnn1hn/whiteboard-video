@@ -74,12 +74,13 @@ class RegionStreamRenderer:
         self.ann = annotation
         self.canvas_bgr = sr._hex_to_bgr(cfg.canvas_hex)
 
-        # 输出尺寸：长边限到 cap，对齐到 grid_edge 的偶数倍（编码要求偶数）
+        # 输出尺寸：长边缩放到 cap，再各自取最接近的 grid_edge 偶数倍（编码要求偶数）。
+        # 取「最接近」而非向下取整，尽量保持原图宽高比（1672x941 @1920 → 1920x1080）。
         h0, w0 = image_bgr.shape[:2]
         scale = cfg.cap_long_edge / max(h0, w0)
         align = cfg.grid_edge if cfg.grid_edge % 2 == 0 else cfg.grid_edge * 2
-        w = max(align, (int(round(w0 * scale)) // align) * align)
-        h = max(align, (int(round(h0 * scale)) // align) * align)
+        w = max(align, int(round(w0 * scale / align)) * align)
+        h = max(align, int(round(h0 * scale / align)) * align)
         self.out_w, self.out_h = w, h
 
         # 标注画布坐标 → 输出坐标的缩放比
@@ -106,13 +107,14 @@ class RegionStreamRenderer:
         self.drawn = np.empty((self.out_h, self.out_w, 3), dtype=np.float32)
         self.drawn[...] = self.canvas_bgr.astype(np.float32)
 
-        # 笔尖覆盖
+        # 笔尖覆盖：手部高度按 1080p 调校，随输出高度等比缩放（否则低分辨率下手部过大）
         self.tip: sr.TipOverlay | None = None
         if not bare_tip:
-            hand_data = sr._load_hand(hand_png, cfg.target_hand_height) if hand_png else None
+            hand_h = max(40, int(round(cfg.target_hand_height * self.out_h / 1080)))
+            hand_data = sr._load_hand(hand_png, hand_h) if hand_png else None
             ax, ay = cfg.tip_anchor_x, cfg.tip_anchor_y
             if hand_data is None:
-                hand_data = sr._procedural_tip(cfg.target_hand_height)
+                hand_data = sr._procedural_tip(hand_h)
                 ax, ay = 0.5, 0.70
             self.tip = sr.TipOverlay(hand_data[0], hand_data[1], tip_anchor_x=ax, tip_anchor_y=ay)
 
@@ -185,11 +187,21 @@ class RegionStreamRenderer:
 
     # ── 落墨（限制在 allowed 内）──
     def _reveal_ink_segment(self, a: tuple[int, int], b: tuple[int, int], allowed: np.ndarray) -> None:
-        seg = np.zeros((self.out_h, self.out_w), dtype=np.uint8)
+        # 只在线段包围盒内运算：整幅分配/掩码在 1080p 下每段约 10ms，是渲染的主要耗时
         thick = max(1, self.cfg.ink_reveal_radius * 2 + 1)
-        cv2.line(seg, a, b, 255, thickness=thick, lineType=cv2.LINE_AA)
-        revealed = (seg > 0) & self.ink_pixels & allowed
-        self.drawn[revealed] = self.ink_paint[revealed]
+        pad = thick // 2 + 2
+        x0 = max(0, min(a[0], b[0]) - pad)
+        y0 = max(0, min(a[1], b[1]) - pad)
+        x1 = min(self.out_w, max(a[0], b[0]) + pad + 1)
+        y1 = min(self.out_h, max(a[1], b[1]) + pad + 1)
+        if x1 <= x0 or y1 <= y0:
+            return
+        seg = np.zeros((y1 - y0, x1 - x0), dtype=np.uint8)
+        cv2.line(seg, (a[0] - x0, a[1] - y0), (b[0] - x0, b[1] - y0), 255,
+                 thickness=thick, lineType=cv2.LINE_AA)
+        revealed = (seg > 0) & self.ink_pixels[y0:y1, x0:x1] & allowed[y0:y1, x0:x1]
+        target = self.drawn[y0:y1, x0:x1]
+        target[revealed] = self.ink_paint[y0:y1, x0:x1][revealed]
 
     def _ink_stamp_cell(self, cell: tuple[int, int], allowed: np.ndarray) -> None:
         r, c = cell
@@ -348,7 +360,8 @@ class RegionStreamRenderer:
     # ── 主渲染 ──
     def render_to(self, raw_path: Path, total_ms: int) -> Path:
         cfg = self.cfg
-        elements = sorted(self.ann["elements"], key=lambda e: e["reveal"]["startMs"])
+        elements = sorted(self.ann["elements"],
+                          key=lambda e: (e["reveal"]["startMs"], e.get("sequence", 0)))
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         writer = cv2.VideoWriter(str(raw_path), fourcc, cfg.fps, (self.out_w, self.out_h))
         if not writer.isOpened():
@@ -402,7 +415,8 @@ class RegionStreamRenderer:
                         self._lay_ink_grid(writer, ink_frames, samples, pen_lifts, sample_cell, path, allowed)
                         centers = [self._cell_center(c) for c in path]
                     else:
-                        self._lay_ink(writer, ink_frames, [], set(), None, allowed)
+                        # 区域内没有墨迹（空白纸面或被后续区域完全覆盖）：笔尖停在画面中央
+                        self._lay_ink(writer, ink_frames, [], set(), allowed)
                         centers = []
 
                 cur_ms += ink_frames * ms_per_frame
@@ -466,13 +480,16 @@ def _parse_args(argv=None):
                    help="笔迹路径: grid 网格(默认); skeleton 骨架追踪")
     p.add_argument("--color-fill", default="contour-wipe", choices=["contour-wipe", "brush"],
                    help="上色: contour-wipe 轮廓扫描(默认); brush 沿轨迹刷")
+    # 旧参数：逐区域画法下不起作用，只为兼容旧命令保留，不在 --help 中显示
     p.add_argument("--pause", default="heavy", choices=["heavy", "auto", "light", "off"],
-                   help="起笔段停顿节奏（预留，逐区域画法下影响较弱）")
+                   help=argparse.SUPPRESS)
     p.add_argument("--fps", type=int, default=None)
     p.add_argument("--grid-edge", type=int, default=None)
     p.add_argument("--brush-radius", type=int, default=None)
     p.add_argument("--cap-long-edge", type=int, default=None,
-                   help="输出长边像素上限（预览可调小加速，默认 1080）")
+                   help="输出长边像素（默认 1920 → 16:9 原图得 1920x1080；预览可设 960 加速）")
+    p.add_argument("--canvas-color", default=None,
+                   help="画布/纸张底色 #RRGGBB（默认 #F5EBD7，与字幕底框一致）")
     return p.parse_args(argv)
 
 
@@ -486,6 +503,9 @@ def _build_cfg(args) -> sr.Config:
         kw["brush_radius"] = args.brush_radius
     if args.cap_long_edge is not None:
         kw["cap_long_edge"] = args.cap_long_edge
+    if args.canvas_color is not None:
+        sr._hex_to_bgr(args.canvas_color)  # 非法颜色立即报错
+        kw["canvas_hex"] = args.canvas_color
     kw["ink_path_mode"] = args.ink_path
     kw["color_fill"] = args.color_fill
     kw["pause_mode"] = args.pause

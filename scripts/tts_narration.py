@@ -59,17 +59,42 @@ CIT_DEFAULT_URL = "http://127.0.0.1:8001"
 CIT_DEFAULT_VOICE = "Hải Đăng"  # 当前模型没有此声音时（如 Supertonic）回退到模型默认声音
 CIT_TIMEOUT_S = 1800  # 长句在 CPU 上可能较慢
 
+MIN_SLOT_S = 0.15          # 一条字幕的时间槽短于此值视为时间轴重叠/重复，无法排入语音
+MAX_COMFORT_SPEEDUP = 1.35  # 超过此加速倍数时提示“难以听清”
+# 各引擎允许的 --speed 范围
+SPEED_RANGES = {
+    "cit": (0.75, 1.5),
+    "edge": (0.5, 2.0),   # 原速合成后用 atempo 调速
+    "vbee": (0.1, 1.9),
+}
+
+
+class SlotError(RuntimeError):
+    """字幕时间槽过短（时间轴重叠/重复）。"""
+
+
+def _parse_env_value(raw: str) -> str:
+    """Giá trị trong ngoặc kép/đơn giữ nguyên; không có ngoặc thì bỏ ghi chú cuối dòng (`  # ...`)."""
+    value = raw.strip()
+    if value[:1] in ("'", '"'):
+        end = value.find(value[0], 1)
+        if end > 0:
+            return value[1:end]
+    return re.sub(r"(^|\s+)#.*$", "", value).strip()
+
 
 def load_dotenv(path: Path) -> None:
-    """极简 .env 读取：KEY=VALUE，忽略注释；已存在的环境变量优先。"""
+    """Đọc .env tối giản: KEY=VALUE, bỏ dòng/đoạn ghi chú; biến môi trường đã có được ưu tiên."""
     if not path.exists():
         return
     for line in path.read_text(encoding="utf-8-sig").splitlines():
         line = line.strip()
+        if line.startswith("export "):
+            line = line[len("export "):].strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        os.environ.setdefault(key.strip(), _parse_env_value(value))
 
 
 def _request_json(url: str, token: str, body: dict | None = None) -> dict:
@@ -237,9 +262,10 @@ def probe_duration(path: Path) -> float:
 
 
 def trim_silence(clip: Path) -> Path:
-    """裁掉 TTS 片段首尾静音（Edge 约首 0.25s + 尾 0.8s），保留 50ms/100ms 余量；结果缓存为 .trim.wav。"""
+    """裁掉 TTS 片段首尾静音（Edge 约首 0.25s + 尾 0.8s），保留 50ms/100ms 余量；结果缓存为 .trim.wav。
+    原始片段比 .trim.wav 新（重新合成过）时重新裁剪，避免沿用旧结果。"""
     out = clip.with_suffix(".trim.wav")
-    if not out.exists():
+    if not out.exists() or out.stat().st_mtime < clip.stat().st_mtime:
         sr = "silenceremove=start_periods=1:start_threshold=-40dB:start_silence={}"
         subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", str(clip),
@@ -251,7 +277,9 @@ def trim_silence(clip: Path) -> Path:
 
 
 def _atempo_chain(factor: float) -> str:
-    """atempo 单级范围 0.5–2.0，超出时串联。"""
+    """atempo 单级范围 0.5–2.0，超出时串联。factor 必须 > 0（否则下面的循环永不结束）。"""
+    if not factor > 0 or factor == float("inf"):
+        raise ValueError(f"hệ số atempo không hợp lệ: {factor}")
     parts = []
     while factor > 2.0:
         parts.append("atempo=2.0")
@@ -279,11 +307,20 @@ def build_track(cues: list[dict], clips: list[Path], output: Path, total_ms: int
         else:
             slot_ms = max(cue["endMs"], total_ms or 0) - cue["startMs"]
         slot_s = slot_ms / 1000
+        if slot_s < MIN_SLOT_S:
+            nxt = cues[i + 1]["index"] if i + 1 < len(cues) else "cuối"
+            raise SlotError(
+                f"Câu {cue['index']} chỉ có khung {slot_s * 1000:.0f} ms (tới câu {nxt}): mốc phụ đề bị trùng "
+                f"hoặc chồng nhau nên không xếp được giọng đọc. Sửa mốc trong SRT, hoặc chạy thêm "
+                f"--retime-out <ra.srt> để sắp lại mốc theo độ dài giọng thật."
+            )
         dur = probe_duration(clip)
         chain = f"[{i}:a]aresample={SAMPLE_RATE},aformat=channel_layouts=mono"
         if dur > slot_s - 0.05:
             factor = dur / (slot_s - 0.05)
-            print(f"  [warn] 字幕 {cue['index']} 语音 {dur:.2f}s 超出时间槽 {slot_s:.2f}s，加速 x{factor:.2f}")
+            hint = "  → khó nghe; nên dùng --retime-out hoặc rút gọn câu" if factor > MAX_COMFORT_SPEEDUP else ""
+            print(f"  [cảnh báo] Câu {cue['index']}: giọng dài {dur:.2f}s, vượt khung {slot_s:.2f}s, "
+                  f"tăng tốc x{factor:.2f}{hint}")
             chain += "," + _atempo_chain(factor)
         chain += f",apad,atrim=0:{slot_s:.3f}[c{i}]"
         inputs += ["-i", str(clip)]
@@ -385,8 +422,12 @@ def main(argv=None) -> int:
     cit: CitClient | None = None
     voice_key = ""
     if args.provider == "cit":
-        cit = CitClient(os.environ.get("CIT_BASE_URL") or CIT_DEFAULT_URL,
-                        os.environ.get("CIT_API_KEY") or None)
+        cit_key = os.environ.get("CIT_API_KEY") or None
+        if cit_key and not cit_key.isascii():
+            print("[lỗi] CIT_API_KEY chứa ký tự không hợp lệ (có dấu/ghi chú?). Kiểm tra dòng CIT_API_KEY trong .env.",
+                  file=sys.stderr)
+            return 1
+        cit = CitClient(os.environ.get("CIT_BASE_URL") or CIT_DEFAULT_URL, cit_key)
         try:
             health = cit.health()
             names = [v.get("id") for v in cit.voices()]
@@ -424,8 +465,10 @@ def main(argv=None) -> int:
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
         print("[err] 需要系统 ffmpeg / ffprobe", file=sys.stderr)
         return 1
-    if not 0.1 <= args.speed <= 1.9:
-        print("[err] --speed 需在 0.1–1.9 之间", file=sys.stderr)
+    lo, hi = SPEED_RANGES[args.provider]
+    if not lo <= args.speed <= hi:
+        print(f"[lỗi] --speed với {args.provider} phải trong khoảng {lo}–{hi} (đang là {args.speed})",
+              file=sys.stderr)
         return 1
 
     srt = Path(args.srt)
@@ -471,7 +514,11 @@ def main(argv=None) -> int:
     video = Path(args.video) if args.video else None
     total_ms = int(probe_duration(video) * 1000) if video else None
     output = Path(args.output)
-    build_track(cues, clips, output, total_ms)
+    try:
+        build_track(cues, clips, output, total_ms)
+    except SlotError as e:
+        print(f"[lỗi] {e}", file=sys.stderr)
+        return 1
     print(f"AUDIO={output.resolve()}")
 
     if video:
