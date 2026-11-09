@@ -133,6 +133,9 @@ def render(image_path: str, annotation_path: str, output_path: str, font_path: s
 
 
 def main(argv=None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):  # console Windows mặc định cp1252, in tiếng Việt sẽ lỗi
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(description="Xuất ảnh kiểm tra vùng từ annotation.json")
     p.add_argument("image", help="Ảnh gốc của cảnh")
     p.add_argument("annotation", help="File <tên>.annotation.json")

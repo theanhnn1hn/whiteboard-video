@@ -56,9 +56,6 @@ from typing import Callable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from parse_srt import parse_srt  # noqa: E402
 
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")  # console Windows mặc định cp1252
-    sys.stderr.reconfigure(encoding="utf-8")
 
 PROVIDERS = ["cit", "elevenlabs", "vbee", "edge"]
 SAMPLE_RATE = 44100
@@ -825,6 +822,9 @@ def list_models() -> None:
 # Chương trình chính
 # ──────────────────────────────────────────────────────────────
 def main(argv=None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):  # console Windows mặc định cp1252, in tiếng Việt sẽ lỗi
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
     p = argparse.ArgumentParser(

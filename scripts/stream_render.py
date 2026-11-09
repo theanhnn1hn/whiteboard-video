@@ -100,7 +100,7 @@ class Config:
 def _hex_to_bgr(hex_color: str) -> np.ndarray:
     digits = hex_color.lstrip("#")
     if len(digits) != 6:
-        raise ValueError(f"非法颜色值: {hex_color}")
+        raise ValueError(f"Màu không hợp lệ (cần #RRGGBB): {hex_color}")
     r = int(digits[0:2], 16)
     g = int(digits[2:4], 16)
     b = int(digits[4:6], 16)
@@ -122,7 +122,7 @@ def _to_grid_blocks(image: np.ndarray, edge: int) -> np.ndarray:
     image = np.ascontiguousarray(image)
     h, w = image.shape[:2]
     if h % edge or w % edge:
-        raise ValueError(f"图像尺寸 {w}x{h} 必须是 {edge} 的整数倍")
+        raise ValueError(f"Kích thước ảnh {w}x{h} phải là bội số của {edge}")
     rows, cols = h // edge, w // edge
     if image.ndim == 2:
         return image.reshape(rows, edge, cols, edge).transpose(0, 2, 1, 3)
@@ -1639,9 +1639,9 @@ def transcode_h264(src: Path, dst: Path) -> Path:
         res = subprocess.run(cmd, capture_output=True, text=True)
         if res.returncode == 0:
             src.unlink(missing_ok=True)
-            print(f"  H.264 转码完成(ffmpeg): {dst}")
+            print(f"  Đã chuyển sang H.264 (ffmpeg): {dst}")
             return dst
-        print(f"  [warn] ffmpeg 转码失败: {res.stderr.strip()}")
+        print(f"  [cảnh báo] ffmpeg chuyển mã thất bại: {res.stderr.strip()}")
 
     # 路径2：PyAV（备选，纯 pip 安装）
     try:
@@ -1649,11 +1649,11 @@ def transcode_h264(src: Path, dst: Path) -> Path:
     except ImportError:
         pass
     except Exception as e:
-        print(f"  [warn] PyAV 转码失败: {e}")
+        print(f"  [cảnh báo] PyAV chuyển mã thất bại: {e}")
 
     # 路径3：都没有，保留 mp4v
-    print(f"  [warn] 未找到 ffmpeg 和 PyAV，保留原始 mp4v 编码: {src}")
-    print(f"         安装任一即可获得 H.264: pip install av  或  安装系统 ffmpeg")
+    print(f"  [cảnh báo] Không có ffmpeg lẫn PyAV, giữ nguyên mã mp4v: {src}")
+    print("         Cài một trong hai để có H.264: pip install av  hoặc cài ffmpeg")
     return src
 
 
@@ -1689,7 +1689,7 @@ def _transcode_with_pyav(src: Path, dst: Path) -> Path:
     output_container.close()
     input_container.close()
     src.unlink(missing_ok=True)
-    print(f"  H.264 转码完成(PyAV): {dst}")
+    print(f"  Đã chuyển sang H.264 (PyAV): {dst}")
     return dst
 
 
@@ -1762,6 +1762,9 @@ def _build_cfg(args: argparse.Namespace) -> Config:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):  # console Windows mặc định cp1252, in tiếng Việt sẽ lỗi
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     args = _parse_args(argv)
     cfg = _build_cfg(args)
 

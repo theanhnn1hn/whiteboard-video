@@ -1,22 +1,18 @@
 #!/usr/bin/env python3
 """
-SRT 白板动画 - 整合渲染器（mask 编排 + stream 画法）
+Render video vẽ tay cho một cảnh: ảnh nét vẽ + annotation.json cùng tên → MP4.
 
-把一张线稿图 + 同名 annotation.json 渲染成白板手绘动画：
-  - 编排沿用 whiteboard-mask-animation：按 sequence/startMs 顺序逐区域揭示，
-    每个区域的可作画范围 = 矩形 region 扣除「后续区域 + protectedRegions」，
-    未开始的区域因掩码限制不会提前露线（mask 的核心不变量）。
-  - 画法换成 whiteboard-stream-animation：每个区域在自己的允许掩码内，
-    沿骨架/网格笔迹连续落墨（起笔 ink → 添彩 color），笔尖跟随真实笔迹，
-    所有区域共享同一张持久画布，已画完的区域保留在画布上。
+  - Dàn dựng theo mặt nạ từng vùng: các vùng hiện lần lượt theo reveal.startMs (rồi sequence);
+    phạm vi được vẽ của mỗi vùng = khung region trừ các vùng vẽ sau và protectedRegions,
+    nên vùng chưa tới lượt không bao giờ lộ nét sớm.
+  - Cách vẽ là nét bút liền mạch: trong phạm vi được phép, đầu bút trượt theo lưới/khung xương
+    để đi nét (ink) rồi tô màu (color); mọi vùng dùng chung một canvas, vùng vẽ xong được giữ lại.
+Dòng cuối in OUTPUT=<đường dẫn> để agent/script khác đọc.
 
-与 mask 的矩形擦除揭示不同：这里是「笔尖沿线滑行、边走边落墨」的连贯笔迹。
-输出末行打印 OUTPUT=<路径>，便于上层捕获。
-
-用法：
-  <ENV_PY> render_stream_whiteboard.py <图片> <标注json> <输出mp4> [手部素材png]
-  可选参数见 --help（--ink-path / --color-fill / --pause / --total-ms 等）。
-  --total-ms 缺省时用标注里的 sceneDurationMs。
+Dùng:
+  <ENV_PY> render_stream_whiteboard.py <ảnh> <annotation.json> <ra.mp4> [ảnh-bàn-tay.png]
+  Tuỳ chọn xem --help (--ink-path / --color-fill / --total-ms / --cap-long-edge ...).
+  Không có --total-ms thì dùng sceneDurationMs trong annotation.
 """
 from __future__ import annotations
 
@@ -365,7 +361,7 @@ class RegionStreamRenderer:
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         writer = cv2.VideoWriter(str(raw_path), fourcc, cfg.fps, (self.out_w, self.out_h))
         if not writer.isOpened():
-            raise RuntimeError("无法打开视频写入器")
+            raise RuntimeError("Không mở được bộ ghi video (OpenCV VideoWriter)")
 
         weight_sum = cfg.ink_weight + cfg.color_weight
         cur_ms = 0.0
@@ -469,17 +465,17 @@ class RegionStreamRenderer:
 
 
 def _parse_args(argv=None):
-    p = argparse.ArgumentParser(description="SRT 白板动画整合渲染器（mask 编排 + stream 画法）")
-    p.add_argument("image", help="线稿图路径")
-    p.add_argument("annotation", help="同名 annotation.json 路径")
-    p.add_argument("output", help="输出 MP4 路径")
-    p.add_argument("hand", nargs="?", default=str(DEFAULT_HAND), help="手部素材 PNG（默认内置）")
-    p.add_argument("--total-ms", type=int, default=None, help="总时长；缺省用标注 sceneDurationMs")
-    p.add_argument("--bare-tip", action="store_true", help="不叠加笔尖/手部")
+    p = argparse.ArgumentParser(description="Render video vẽ tay cho một cảnh (mặt nạ theo vùng + nét bút liền mạch)")
+    p.add_argument("image", help="Ảnh nét vẽ của cảnh")
+    p.add_argument("annotation", help="File <tên>.annotation.json")
+    p.add_argument("output", help="Video MP4 xuất ra")
+    p.add_argument("hand", nargs="?", default=str(DEFAULT_HAND), help="Ảnh bàn tay cầm bút PNG (mặc định assets/drawing-hand.png)")
+    p.add_argument("--total-ms", type=int, default=None, help="Tổng thời lượng (ms); mặc định sceneDurationMs trong annotation")
+    p.add_argument("--bare-tip", action="store_true", help="Không vẽ bàn tay/đầu bút")
     p.add_argument("--ink-path", default="grid", choices=["grid", "skeleton"],
-                   help="笔迹路径: grid 网格(默认); skeleton 骨架追踪")
+                   help="Đường bút: grid lưới (mặc định, ổn định); skeleton bám khung xương (hợp ảnh nét rõ)")
     p.add_argument("--color-fill", default="contour-wipe", choices=["contour-wipe", "brush"],
-                   help="上色: contour-wipe 轮廓扫描(默认); brush 沿轨迹刷")
+                   help="Tô màu: contour-wipe quét theo viền (mặc định); brush tô theo vệt bút")
     # 旧参数：逐区域画法下不起作用，只为兼容旧命令保留，不在 --help 中显示
     p.add_argument("--pause", default="heavy", choices=["heavy", "auto", "light", "off"],
                    help=argparse.SUPPRESS)
@@ -487,9 +483,9 @@ def _parse_args(argv=None):
     p.add_argument("--grid-edge", type=int, default=None)
     p.add_argument("--brush-radius", type=int, default=None)
     p.add_argument("--cap-long-edge", type=int, default=None,
-                   help="输出长边像素（默认 1920 → 16:9 原图得 1920x1080；预览可设 960 加速）")
+                   help="Cạnh dài của video, pixel (mặc định 1920 → ảnh 16:9 ra 1920x1080; xem thử nhanh dùng 960)")
     p.add_argument("--canvas-color", default=None,
-                   help="画布/纸张底色 #RRGGBB（默认 #F5EBD7，与字幕底框一致）")
+                   help="Màu giấy nền #RRGGBB (mặc định #F5EBD7, trùng màu nền phụ đề)")
     return p.parse_args(argv)
 
 
@@ -513,24 +509,27 @@ def _build_cfg(args) -> sr.Config:
 
 
 def main(argv=None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):  # console Windows mặc định cp1252, in tiếng Việt sẽ lỗi
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     args = _parse_args(argv)
     cfg = _build_cfg(args)
 
     print("=" * 56)
-    print("SRT 白板动画整合渲染器 (mask 编排 + stream 画法)")
+    print("Render video vẽ tay (mặt nạ theo vùng + nét bút liền mạch)")
     print("=" * 56)
 
     image_bgr = sr._imread_any(args.image)
     if image_bgr is None:
-        print(f"[err] 无法读取图片: {args.image}")
+        print(f"[lỗi] Không đọc được ảnh: {args.image}")
         return 1
     try:
         annotation = json.loads(Path(args.annotation).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as e:
-        print(f"[err] 无法读取标注: {e}")
+        print(f"[lỗi] Không đọc được annotation: {e}")
         return 1
     if not annotation.get("elements"):
-        print("[err] 标注中没有 elements")
+        print("[lỗi] Annotation không có vùng nào (elements rỗng)")
         return 1
 
     total_ms = args.total_ms if args.total_ms is not None else annotation.get("sceneDurationMs")
@@ -544,16 +543,16 @@ def main(argv=None) -> int:
 
     hand_png = Path(args.hand) if args.hand else None
     renderer = RegionStreamRenderer(image_bgr, annotation, cfg, hand_png, args.bare_tip)
-    print(f"  输入: {args.image}")
-    print(f"  输出尺寸: {renderer.out_w}x{renderer.out_h}, 帧率: {cfg.fps}")
-    print(f"  区域数: {len(annotation['elements'])}, 总时长: {total_ms}ms, "
-          f"笔迹: {cfg.ink_path_mode}, 上色: {cfg.color_fill}")
+    print(f"  Ảnh: {args.image}")
+    print(f"  Kích thước: {renderer.out_w}x{renderer.out_h}, {cfg.fps} fps")
+    print(f"  Số vùng: {len(annotation['elements'])}, tổng thời lượng: {total_ms} ms, "
+          f"đường bút: {cfg.ink_path_mode}, tô màu: {cfg.color_fill}")
 
     renderer.render_to(raw_path, total_ms)
     final = sr.transcode_h264(raw_path, out_path)
 
     size_mb = final.stat().st_size / (1024 * 1024)
-    print(f"\n最终视频: {final}  ({size_mb:.2f} MB)")
+    print(f"\nVideo: {final}  ({size_mb:.2f} MB)")
     print("=" * 56)
     print(f"OUTPUT={final}")
     return 0

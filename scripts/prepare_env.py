@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
-流式笔迹动画 - 环境引导脚本
+Chuẩn bị môi trường Python cho skill.
 
-职责：
-  1. 在 skill 目录下建立隔离的 Python 虚拟环境（已存在则复用）
-  2. 核对运行所需的第三方库是否可导入
-  3. 自动补齐缺失的库
-  4. 末行打印 ENV_PY=<解释器路径>，供上层调用方捕获
+  1. Tạo môi trường ảo .venv ở thư mục gốc repo (có rồi thì dùng lại)
+  2. Kiểm tra các thư viện cần thiết có import được không
+  3. Cài bổ sung thư viện còn thiếu (theo requirements.txt nếu có)
+  4. Dòng cuối in ENV_PY=<đường dẫn python>, để agent/script khác đọc
 
-用法：
-  python prepare_env.py          # 建环境 + 补依赖，输出 ENV_PY
-  python prepare_env.py --check  # 仅探测，缺东西就以非零码退出
+Dùng:
+  python prepare_env.py          # tạo môi trường + cài thư viện, in ENV_PY
+  python prepare_env.py --check  # chỉ kiểm tra, thiếu thì thoát với mã khác 0
 """
 from __future__ import annotations
 
@@ -44,16 +43,16 @@ def interpreter_path() -> Path:
 def ensure_venv(check_only: bool) -> Path:
     py = interpreter_path()
     if VENV_ROOT.exists() and py.exists():
-        print(f"[ok] 复用现有虚拟环境: {VENV_ROOT}")
+        print(f"[ok] Dùng lại môi trường ảo: {VENV_ROOT}")
         return py
 
     if check_only:
-        print(f"[err] 虚拟环境尚未建立: {VENV_ROOT}")
+        print(f"[lỗi] Chưa có môi trường ảo: {VENV_ROOT}")
         sys.exit(1)
 
-    print(f"[..] 建立虚拟环境: {VENV_ROOT}")
+    print(f"[..] Tạo môi trường ảo: {VENV_ROOT}")
     venv.create(str(VENV_ROOT), with_pip=True)
-    print("[ok] 虚拟环境就绪")
+    print("[ok] Môi trường ảo sẵn sàng")
     return py
 
 
@@ -68,20 +67,23 @@ def can_import(py: Path, import_name: str) -> bool:
 def install(py: Path, packages: list[str]) -> bool:
     if not packages:
         return True
-    print(f"[..] 安装依赖: {', '.join(packages)}")
+    print(f"[..] Cài thư viện: {', '.join(packages)}")
     res = subprocess.run(
         [str(py), "-m", "pip", "install", "--quiet", *packages],
         capture_output=True,
         text=True,
     )
     if res.returncode != 0:
-        print(f"[err] 安装失败:\n{res.stderr}")
+        print(f"[lỗi] Cài thất bại:\n{res.stderr}")
         return False
-    print("[ok] 依赖安装完成")
+    print("[ok] Đã cài xong thư viện")
     return True
 
 
 def main() -> None:
+    if hasattr(sys.stdout, "reconfigure"):  # console Windows mặc định cp1252, in tiếng Việt sẽ lỗi
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     check_only = "--check" in sys.argv
 
     py = ensure_venv(check_only)
@@ -96,7 +98,7 @@ def main() -> None:
 
     if missing:
         if check_only:
-            print(f"\n缺 {len(missing)} 个依赖: {', '.join(missing)}")
+            print(f"\nThiếu {len(missing)} thư viện: {', '.join(missing)}")
             sys.exit(1)
         if not install(py, missing):
             sys.exit(1)
