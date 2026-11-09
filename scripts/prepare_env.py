@@ -23,14 +23,30 @@ from pathlib import Path
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 VENV_ROOT = SKILL_ROOT / ".venv"
 
-# 解释器导入名 -> pip 安装名
+REQUIREMENTS = SKILL_ROOT / "requirements.txt"
+
+# tên import -> tên gói pip (phiên bản lấy từ requirements.txt)
 DEPS: dict[str, str] = {
-    "cv2": "opencv-python",
+    "cv2": "opencv-python-headless",
     "numpy": "numpy",
-    "av": "av",  # PyAV：纯 pip 安装的 H.264 编码，无需系统 ffmpeg
-    "PIL": "Pillow",  # render_annotation_preview.py 画区域编号预览图（含中文标签）
-    "edge_tts": "edge-tts",  # tts_narration.py --provider edge（免费旁白）
+    "av": "av",  # PyAV: chuyển mã H.264 dự phòng khi không có ffmpeg
+    "PIL": "Pillow",  # render_annotation_preview.py vẽ ảnh kiểm tra vùng
+    "edge_tts": "edge-tts",  # tts_narration.py --provider edge (giọng miễn phí)
 }
+
+
+def requirement_specs() -> dict[str, str]:
+    """Đọc requirements.txt → {tên gói viết thường: dòng yêu cầu có phiên bản}."""
+    specs: dict[str, str] = {}
+    if REQUIREMENTS.exists():
+        for line in REQUIREMENTS.read_text(encoding="utf-8").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if line:
+                name = line.split(";")[0]
+                for op in ("<", ">", "=", "!", "~", "["):
+                    name = name.split(op)[0]
+                specs[name.strip().lower()] = line
+    return specs
 
 
 def interpreter_path() -> Path:
@@ -100,7 +116,9 @@ def main() -> None:
         if check_only:
             print(f"\nThiếu {len(missing)} thư viện: {', '.join(missing)}")
             sys.exit(1)
-        if not install(py, missing):
+        # Chỉ cài gói còn thiếu (không đụng gói đã có, vd opencv-python bản đầy đủ đã cài trước)
+        specs = requirement_specs()
+        if not install(py, [specs.get(name.lower(), name) for name in missing]):
             sys.exit(1)
 
     # 末行：供调用方捕获的约定输出
