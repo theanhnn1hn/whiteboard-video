@@ -10,7 +10,7 @@ AI agent viết kịch bản · tạo giọng đọc · phân cảnh · tạo �
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab)
 ![ffmpeg](https://img.shields.io/badge/c%E1%BA%A7n-ffmpeg-007808)
 ![AI agents](https://img.shields.io/badge/Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Gemini%20%C2%B7%20Cursor-skill-0f766e)
-![Giọng đọc](https://img.shields.io/badge/gi%E1%BB%8Dng%20%C4%91%E1%BB%8Dc-CIT%20%C2%B7%20Edge%20%C2%B7%20Vbee-f97316)
+![Giọng đọc](https://img.shields.io/badge/gi%E1%BB%8Dng%20%C4%91%E1%BB%8Dc-CIT%20%C2%B7%20ElevenLabs%20%C2%B7%20Edge%20%C2%B7%20Vbee-f97316)
 
 **[Xem thử](#xem-thử)** &nbsp;·&nbsp; **[Bắt đầu nhanh](#bắt-đầu-nhanh)** &nbsp;·&nbsp; **[Dùng với AI agent](#dùng-với-ai-agent)** &nbsp;·&nbsp; **[Cài đặt](#cài-đặt)** &nbsp;·&nbsp; **[Dùng bằng lệnh](#dùng-thủ-công-bằng-lệnh)** &nbsp;·&nbsp; **[Lỗi thường gặp](#lỗi-thường-gặp)** &nbsp;·&nbsp; **[Cộng đồng](#cộng-đồng-và-các-mẫu-video-khác)**
 
@@ -38,7 +38,7 @@ Phù hợp cho video kể chuyện ngắn, bài giảng, giải thích kiến th
 
 | ✍️ **Từ chủ đề đến video** | 🎙️ **Giọng đọc tiếng Việt** | 🖊️ **Vẽ theo lời kể** |
 |---|---|---|
-| Đưa một chủ đề, kịch bản hoặc file SRT. Agent viết kịch bản, phân cảnh, tạo ảnh và dựng video. | [CIT Voice Studio](https://github.com/Cuongyd196/cit-voice-studio) (offline, miễn phí), Edge TTS hoặc Vbee. Phụ đề sinh theo độ dài giọng thật. | Mỗi cảnh chia thành nhiều vùng, vẽ đúng thứ tự câu đang đọc. Vùng chưa tới lượt hoàn toàn ẩn. |
+| Đưa một chủ đề, kịch bản hoặc file SRT. Agent viết kịch bản, phân cảnh, tạo ảnh và dựng video. | [CIT Voice Studio](https://github.com/Cuongyd196/cit-voice-studio) (offline, miễn phí), ElevenLabs, Edge TTS hoặc Vbee. Phụ đề sinh theo độ dài giọng thật. | Mỗi cảnh chia thành nhiều vùng, vẽ đúng thứ tự câu đang đọc. Vùng chưa tới lượt hoàn toàn ẩn. |
 | 🎨 **Nét bút liền mạch** | 🧭 **Chỉnh trực quan** | ⏱️ **Nhịp gọn** |
 | Đi nét đen trước (`ink`), tô màu sau (`color`), bàn tay cầm bút bám theo nét. | Trang xem trước trên trình duyệt để kéo chỉnh vùng, thứ tự và thời gian. | Với SRT có sẵn, co thời gian vẽ theo giọng đọc để bỏ khoảng lặng thừa. |
 
@@ -117,6 +117,7 @@ Gắn phụ đề vào video.
 Thêm giọng đọc bằng CIT Voice Studio, giọng Trúc Ly.
 Thêm giọng đọc bằng Edge TTS.
 Thêm giọng đọc Vbee, giọng n_hanoi_male_protrainer_education_vc.
+Thêm giọng đọc ElevenLabs, giọng Linh. Báo trước tốn bao nhiêu ký tự.
 Giọng đọc và hình bớt khoảng lặng cho video hấp dẫn hơn.     ← chế độ nhịp gọn
 Nghỉ lâu hơn sau câu "Chiếc ô không trở lại".
 Đổi sang giọng nữ vi-VN-HoaiMyNeural.
@@ -162,11 +163,11 @@ Agent **dừng lại sau mỗi bước** để bạn duyệt. Trả lời "ok" �
 |---|---|
 | Python 3.10+ | Script tự tạo `.venv` riêng |
 | ffmpeg / ffprobe | Có trong PATH |
-| Giọng đọc | [CIT Voice Studio](#cài-cit-voice-studio) (mặc định), Edge TTS hoặc Vbee |
+| Giọng đọc | [CIT Voice Studio](#cài-cit-voice-studio) (mặc định), [ElevenLabs](#dùng-elevenlabs), Edge TTS hoặc Vbee |
 | Chrome / Edge | Cho trang xem trước `assets/preview.html` |
 
 ```bash
-python scripts/prepare_env.py          # tạo .venv và cài opencv, numpy, av, Pillow, edge-tts
+python scripts/prepare_env.py          # tạo .venv và cài thư viện theo requirements.txt
 python scripts/prepare_env.py --check  # chỉ kiểm tra; dòng cuối in ENV_PY=<đường dẫn python>
 ```
 
@@ -190,6 +191,32 @@ Các lệnh trong tài liệu dùng `<ENV_PY>` là Python trong `.venv`: Windows
 > [!IMPORTANT]
 > Giọng do AI tạo ra. Khi đăng video công khai, ghi rõ "Giọng đọc được tạo bằng AI" ở phần mô tả.
 
+### Dùng ElevenLabs
+
+[ElevenLabs](https://elevenlabs.io) cho giọng tự nhiên nhất, tính phí theo ký tự.
+
+1. Tạo API key: elevenlabs.io → **Developers → API Keys**, cấp quyền **Text to Speech** và **Voices: Read** (thêm **User: Read** để script báo số ký tự còn lại).
+2. Chọn giọng: thêm giọng từ Voice Library vào **My Voices** (hoặc dùng giọng nhân bản của bạn), rồi xem danh sách:
+
+   ```bash
+   <ENV_PY> scripts/tts_narration.py --list-voices --provider elevenlabs
+   ```
+
+3. Điền vào `.env`: `TTS_PROVIDER=elevenlabs`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE` (voice_id hoặc tên giọng).
+4. Trước khi tạo giọng, xem số ký tự sẽ bị tính phí (câu đã có trong cache không tính) và số ký tự còn lại trong tài khoản:
+
+   ```bash
+   <ENV_PY> scripts/tts_narration.py draft.srt --output narration.m4a --provider elevenlabs --dry-run
+   ```
+
+| Model (`ELEVENLABS_MODEL`) | Ghi chú |
+|---|---|
+| `eleven_v3` (mặc định) | Tự nhiên, giàu cảm xúc nhất; có tiếng Việt |
+| `eleven_flash_v2_5` | Rẻ hơn khoảng một nửa, nhanh; có tiếng Việt |
+| `eleven_multilingual_v2` | **Không** có tiếng Việt |
+
+Script kiểm tra model có tiếng Việt hay không (`--list-models --provider elevenlabs` để xem), gửi kèm `language_code=vi` và câu trước/sau của mỗi câu để ngữ điệu liền mạch, tự thử lại khi bị giới hạn tốc độ. Tinh chỉnh tuỳ chọn: `ELEVENLABS_STABILITY` (với `eleven_v3` chỉ nhận 0.0 / 0.5 / 1.0), `ELEVENLABS_SIMILARITY`, `ELEVENLABS_STYLE`, `ELEVENLABS_SEED`.
+
 ### Cấu hình giọng đọc
 
 Sao chép file mẫu rồi điền giá trị. `.env` đã nằm trong `.gitignore`, **đừng commit key**.
@@ -200,29 +227,44 @@ cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
 
 ```env
 # cit = CIT Voice Studio (mặc định, offline, miễn phí)
-# edge = Edge TTS (online, miễn phí), vbee = trả phí theo ký tự
+# elevenlabs = ElevenLabs, vbee = Vbee (trả phí theo ký tự); edge = Edge TTS (online, miễn phí)
 TTS_PROVIDER=cit
 
 # Tốc độ: 1.0 = bình thường, 1.1 = nhanh hơn 10%
 
 # --- CIT Voice Studio (mặc định chạy ở cổng 8001) ---
 CIT_BASE_URL=http://127.0.0.1:8001
-CIT_API_KEY=            # chỉ cần khi gọi từ máy khác trong LAN
-CIT_VOICE=Hải Đăng      # tên giọng như GET /voices, vd Hải Đăng, Trúc Ly, Mai Anh
+# Chỉ cần khi gọi từ máy khác trong LAN
+CIT_API_KEY=
+# Tên giọng như GET /voices, vd Hải Đăng, Trúc Ly, Mai Anh
+CIT_VOICE=Hải Đăng
 CIT_SPEED=1.0
 
+# --- ElevenLabs ---
+ELEVENLABS_API_KEY=...
+# voice_id hoặc tên giọng trong My Voices
+ELEVENLABS_VOICE=Linh
+ELEVENLABS_MODEL=eleven_v3
+ELEVENLABS_LANGUAGE=vi
+ELEVENLABS_SPEED=1.0
+
 # --- Edge TTS ---
-EDGE_VOICE=vi-VN-NamMinhNeural   # hoặc vi-VN-HoaiMyNeural (nữ)
+# Hoặc vi-VN-HoaiMyNeural (nữ)
+EDGE_VOICE=vi-VN-NamMinhNeural
 EDGE_SPEED=1.05
 
 # --- Vbee ---
 VBEE_APP_ID=...
 VBEE_ACCESS_TOKEN=...
-VBEE_VOICE=n_hanoi_male_protrainer_education_vc   # dán nguyên mã giọng copy từ Vbee
+# Dán nguyên mã giọng copy từ Vbee
+VBEE_VOICE=n_hanoi_male_protrainer_education_vc
 VBEE_SPEED=1.1
 ```
 
-Mỗi engine một nhóm cấu hình riêng; đổi engine chỉ cần sửa `TTS_PROVIDER`. Biến cũ `TTS_VOICE` / `TTS_SPEED` vẫn được đọc làm dự phòng.
+> [!TIP]
+> Nên viết ghi chú trên một dòng riêng. Ghi chú cùng dòng (`KEY=giá trị  # ghi chú`) vẫn được bỏ qua khi đọc, nhưng nếu giá trị có dấu `#` thì đặt trong ngoặc kép: `KEY="abc#123"`.
+
+Mỗi engine một nhóm cấu hình riêng; đổi engine chỉ cần sửa `TTS_PROVIDER`. Toàn bộ biến (kể cả tuỳ chọn ElevenLabs) có trong `.env.example`. Biến cũ `TTS_VOICE` / `TTS_SPEED` vẫn được đọc làm dự phòng.
 
 ## Quy trình làm một video
 
@@ -234,7 +276,7 @@ Luồng đầy đủ khi đầu vào là **một chủ đề**. Đầu vào là 
 | 0b | Tạo giọng đọc, sinh phụ đề theo thời lượng giọng thật | `narration.m4a`, `input.srt` |
 | 1 | Chia cảnh và đề xuất hình cho từng cảnh | Bảng phân cảnh |
 | 2 | Tạo ảnh nét vẽ 16:9, nền kem `#F5EBD7` | `scene-XX-<tên>.png` |
-| 3 | Chia vùng theo mạch kể, mở trang xem trước | `scene-XX-<tên>.annotation.json` |
+| 3 | Chia vùng theo mạch kể, kiểm tra bằng `validate_annotation.py`, mở trang xem trước | `scene-XX-<tên>.annotation.json` |
 | 4 | Xuất ảnh đánh số để kiểm tra vùng và thứ tự | `scene-XX-<tên>-regions.png` |
 | 5 | Chỉnh vùng, thứ tự, thời gian trên trang xem trước | Annotation đã cập nhật |
 | 6 | Render và kiểm tra từng cảnh | `scene-XX-<tên>-whiteboard.mp4` |
@@ -283,11 +325,14 @@ Từ đây dùng `input.srt` cho các bước sau; ở bước 7 giọng đọc 
 # 1. Đọc phụ đề, gợi ý chia cảnh
 python scripts/parse_srt.py input.srt --target-sec 30 --min-sec 25 --max-sec 35
 
-# 2. Xuất ảnh kiểm tra vùng
+# 2a. Kiểm tra annotation: toạ độ, thứ tự, thời gian, độ khớp với lời đọc (thoát mã 1 nếu có lỗi)
+<ENV_PY> scripts/validate_annotation.py scene-01-a.annotation.json scene-02-b.annotation.json --srt input.srt
+
+# 2b. Xuất ảnh kiểm tra vùng (đánh số theo thứ tự vẽ thật, kèm mốc thời gian)
 <ENV_PY> scripts/render_annotation_preview.py <ảnh.png> <ảnh.annotation.json> <ảnh-regions.png>
 ```
 
-**3. Chỉnh sửa trực quan:** mở `assets/preview.html` bằng Chrome / Edge → bấm "Mở thư mục" → chọn thư mục dự án. Kéo khung để sửa vùng, kéo danh sách để đổi thứ tự, sửa thời gian bắt đầu / kết thúc, rồi bấm Lưu.
+**3. Chỉnh sửa trực quan:** mở `assets/preview.html` bằng Chrome / Edge → bấm "Mở thư mục" → chọn thư mục dự án. Kéo khung để sửa vùng, sửa thời gian bắt đầu / kết thúc, rồi bấm Lưu. Kéo danh sách để đổi thứ tự vẽ: các vùng đổi chỗ cho nhau trong các khung thời gian, nên nhịp lời đọc giữ nguyên.
 
 </details>
 
@@ -295,7 +340,7 @@ python scripts/parse_srt.py input.srt --target-sec 30 --min-sec 25 --max-sec 35
 <summary><b>4–5. Render và ghép cảnh</b></summary>
 
 ```bash
-# 4. Render một cảnh
+# 4. Render một cảnh (mặc định 1920x1080; xem thử nhanh thêm --cap-long-edge 960)
 <ENV_PY> scripts/render_stream_whiteboard.py <ảnh.png> <ảnh.annotation.json> <ra.mp4> assets/drawing-hand.png \
   --ink-path skeleton --color-fill contour-wipe
 
@@ -307,6 +352,8 @@ python scripts/parse_srt.py input.srt --target-sec 30 --min-sec 25 --max-sec 35
 |---|---|
 | `--ink-path` | `grid` (mặc định, ổn định) · `skeleton` (bám nét hơn, hợp ảnh nét rõ) |
 | `--color-fill` | `contour-wipe` (quét theo viền, mặc định) · `brush` (tô theo nét bút) |
+| `--cap-long-edge` | Cạnh dài của video, mặc định `1920` (ảnh 16:9 → 1920x1080) |
+| `--canvas-color` | Màu giấy nền, mặc định `#F5EBD7` (trùng hộp nền phụ đề) |
 
 </details>
 
@@ -314,12 +361,15 @@ python scripts/parse_srt.py input.srt --target-sec 30 --min-sec 25 --max-sec 35
 <summary><b>6–7. Gắn phụ đề và giọng đọc</b></summary>
 
 ```bash
-# 6. Gắn phụ đề (chữ xám trên nền màu giấy, không đè nét vẽ)
-ffmpeg -i final.mp4 -vf "subtitles=input.srt:force_style='FontName=Arial,FontSize=15,PrimaryColour=&H00303030,OutlineColour=&H10D7EBF5,BorderStyle=3,Outline=6,Shadow=0,MarginV=14'" \
-  -c:v libx264 -crf 20 -pix_fmt yuv420p final-sub.mp4
+# 6. Gắn phụ đề (chữ xám trên hộp nền màu giấy, không đè nét vẽ; tuỳ chọn --font, --font-size, --box-color)
+<ENV_PY> scripts/burn_subtitles.py final.mp4 input.srt --output final-sub.mp4
 
 # 7. Thêm giọng đọc — CIT Voice Studio (mặc định; --voice là tên giọng trong /voices)
 <ENV_PY> scripts/tts_narration.py input.srt --output narration.m4a --video final-sub.mp4 --voice "Trúc Ly"
+
+# ElevenLabs (voice_id hoặc tên giọng; thêm --dry-run để xem trước số ký tự bị tính phí)
+<ENV_PY> scripts/tts_narration.py input.srt --output narration.m4a --video final-sub.mp4 \
+  --provider elevenlabs --voice "Linh"
 
 # Edge TTS (miễn phí)
 <ENV_PY> scripts/tts_narration.py input.srt --output narration.m4a --video final-sub.mp4 --provider edge
@@ -329,7 +379,7 @@ ffmpeg -i final.mp4 -vf "subtitles=input.srt:force_style='FontName=Arial,FontSiz
   --provider vbee --voice n_hanoi_male_protrainer_education_vc
 ```
 
-Kết quả: `final-sub-voice.mp4`. Mỗi câu đặt đúng mốc phụ đề; câu đọc dài hơn khung thời gian được tăng tốc nhẹ và có cảnh báo. Khoảng lặng đầu / cuối mỗi câu được cắt tự động (tắt bằng `--no-trim`).
+Kết quả: `final-sub-voice.mp4`. Mỗi câu đặt đúng mốc phụ đề; câu đọc dài hơn khung thời gian được tăng tốc nhẹ và có cảnh báo (tăng quá x1,35 thì nên dùng chế độ nhịp gọn). Khoảng lặng đầu / cuối mỗi câu được cắt tự động (tắt bằng `--no-trim`).
 
 </details>
 
@@ -439,6 +489,8 @@ whiteboard-video/
 ├── .agents/skills/whiteboard-video/  # lối vào skill cho Codex
 ├── .agent/skills/whiteboard-video/   # lối vào skill cho Antigravity
 ├── vbee.md                           # hướng dẫn API Vbee
+├── requirements.txt                  # thư viện Python (prepare_env.py đọc file này)
+├── .env.example                      # mẫu cấu hình giọng đọc
 ├── assets/
 │   ├── drawing-hand.png              # ảnh bàn tay cầm bút
 │   ├── preview.html                  # trang xem trước / chỉnh sửa
@@ -447,13 +499,17 @@ whiteboard-video/
 ├── scripts/
 │   ├── script_to_srt.py              # cắt kịch bản thành câu → SRT nháp
 │   ├── parse_srt.py                  # đọc phụ đề, gợi ý chia cảnh
+│   ├── validate_annotation.py        # kiểm tra annotation trước khi render
 │   ├── render_annotation_preview.py  # ảnh kiểm tra vùng
 │   ├── render_stream_whiteboard.py   # render video vẽ tay
+│   ├── stream_render.py              # thư viện nét bút dùng chung cho renderer
 │   ├── merge_scenes.py               # ghép các cảnh
-│   ├── tts_narration.py              # giọng đọc CIT Voice Studio / Vbee / Edge TTS
+│   ├── burn_subtitles.py             # gắn phụ đề lên video
+│   ├── tts_narration.py              # giọng đọc CIT Voice Studio / ElevenLabs / Vbee / Edge TTS
 │   ├── retime_annotations.py         # co thời gian vẽ theo giọng đọc
 │   ├── sync_skill_entries.py         # sinh file lối vào skill cho từng agent
 │   └── prepare_env.py                # cài môi trường
+├── tests/                            # kiểm thử (python -m unittest discover -s tests)
 └── agents/openai.yaml
 ```
 
@@ -463,14 +519,35 @@ whiteboard-video/
 
 | Lỗi | Cách xử lý |
 |---|---|
-| `无法连接 CIT Voice Studio` | Chưa mở CIT Voice Studio hoặc sai `CIT_BASE_URL` → mở ứng dụng, hoặc dùng `--provider edge` |
-| `CIT 当前模型没有声音 ...` | Tên giọng sai hoặc không thuộc mô hình đang chạy → xem `http://127.0.0.1:8001/voices` |
-| `CIT 模型未就绪` | Mô hình đang tải → đợi `/health` báo `"status": "ok"` |
+| `Không kết nối được CIT Voice Studio` | Chưa mở CIT Voice Studio hoặc sai `CIT_BASE_URL` → mở ứng dụng, hoặc dùng `--provider edge` |
+| `Mô hình CIT hiện tại không có giọng ...` | Tên giọng sai hoặc không thuộc mô hình đang chạy → xem `http://127.0.0.1:8001/voices` |
+| `Mô hình CIT chưa sẵn sàng` | Mô hình đang tải → đợi `/health` báo `"status": "ok"` |
+| `Thiếu ELEVENLABS_API_KEY` | Chưa khai báo key ElevenLabs trong `.env` |
+| `API key ElevenLabs không hợp lệ hoặc thiếu quyền` | Key sai, hoặc thiếu quyền Text to Speech / Voices: Read → tạo lại key |
+| `Tài khoản ElevenLabs đã hết ký tự` | Hết quota → nạp thêm, đổi sang `eleven_flash_v2_5` (rẻ hơn) hoặc dùng `--provider cit` / `edge` |
+| `Không tìm thấy giọng ElevenLabs` | Tên/ID giọng sai, hoặc giọng chưa được thêm vào My Voices → `--list-voices --provider elevenlabs` |
+| `Model ... không có tiếng Việt` | Đổi `ELEVENLABS_MODEL` sang `eleven_v3` hoặc `eleven_flash_v2_5` |
 | `You have exceeded the API TTS quota` | Tài khoản Vbee hết quota API → nạp thêm hoặc dùng `--provider edge` |
-| `缺少 VBEE_APP_ID / VBEE_ACCESS_TOKEN` | Chưa khai báo key Vbee trong `.env` |
-| `需要系统 ffmpeg / ffprobe` | Cài ffmpeg và thêm vào PATH |
-| Phụ đề đè lên nét vẽ | Dùng lệnh gắn phụ đề ở bước 6 (có nền màu giấy sau chữ) |
+| `Thiếu VBEE_APP_ID / VBEE_ACCESS_TOKEN` | Chưa khai báo key Vbee trong `.env` |
+| `Cần ffmpeg / ffprobe trong PATH` | Cài ffmpeg và thêm vào PATH |
+| `Câu ... chỉ có khung ... ms` | Hai câu phụ đề trùng/chồng mốc → sửa SRT, hoặc thêm `--retime-out` để sắp lại mốc theo giọng thật |
+| Giọng đọc lệch dần so với hình | Tổng `sceneDurationMs` các cảnh khác thời lượng SRT → chạy `validate_annotation.py ... --srt input.srt` |
+| Phụ đề đè lên nét vẽ | Dùng `burn_subtitles.py` (có hộp nền màu giấy sau chữ) |
 | Nhân vật lộ ra trước lượt | Thêm `protectedRegions` hoặc sửa `region` cho khớp hơn |
+| Nét vẽ hiện đột ngột ở cuối cảnh | Phần nét đó không thuộc vùng nào → `validate_annotation.py` chỉ ra, mở rộng vùng hoặc thêm vùng nền |
+
+## Kiểm thử
+
+```bash
+.venv/bin/python -m unittest discover -s tests -v     # Windows: .venv\Scripts\python.exe -m unittest discover -s tests -v
+python scripts/sync_skill_entries.py --check          # file lối vào skill khớp SKILL.md
+```
+
+Bộ test render một cảnh nhỏ tự sinh, kiểm tra annotation, ghép cảnh, gắn phụ đề và chạy ElevenLabs với máy chủ giả lập (không cần key, không tốn ký tự). CI chạy tự động trên Ubuntu và Windows (`.github/workflows/tests.yml`).
+
+## Lộ trình
+
+Các hướng nâng cấp tiếp theo (đồng bộ theo từng từ, tự đề xuất vùng, nhạc nền và tiếng bút, khung dọc 9:16, một lệnh làm cả video…) nằm trong [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Cộng đồng và các mẫu video khác
 

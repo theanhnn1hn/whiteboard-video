@@ -1,0 +1,11 @@
+# Thư viện cho các script trong scripts/ (prepare_env.py đọc file này).
+# Đã kiểm thử với: opencv 5.0, numpy 2.5, av 19, Pillow 13, edge-tts 7.3 (Python 3.10–3.13).
+# Bản headless: không cần thư viện đồ hoạ (libGL), hợp với máy chủ / CI; script không dùng cửa sổ OpenCV.
+opencv-python-headless>=4.8
+numpy>=1.24
+# PyAV: chuyển mã H.264 dự phòng khi máy không có ffmpeg
+av>=12.0
+# Pillow ≥ 10.1: ImageFont.load_default(size=...) cho ảnh kiểm tra vùng
+Pillow>=10.1
+# Giọng Edge TTS miễn phí (--provider edge)
+edge-tts>=6.1

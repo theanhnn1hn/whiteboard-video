@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 """
-SRT 解析 + 分镜建议
+Đọc SRT + gợi ý chia cảnh
 
-把 .srt 字幕解析成结构化字幕条，并按「每幕 25-35 秒口播」的建议把字幕
-分组成场景，给出每个场景的起止时间、总时长（→ sceneDurationMs）和文本。
+Tách .srt thành từng câu có cấu trúc, rồi gom các câu liên tiếp thành cảnh (mặc định
+25–35 giây/cảnh), cho mỗi cảnh mốc bắt đầu/kết thúc, thời lượng (→ sceneDurationMs) và lời.
+Dùng ở bước 1 của quy trình whiteboard-video.
 
-用途：作为 whiteboard-video 工作流第 1 步的输入依据——
-读出叙事事件、规划配图策略、并为每张图片的标注确定 sceneDurationMs。
+Dùng:
+  python parse_srt.py <phụ-đề.srt> [--target-sec 30] [--min-sec 25] [--max-sec 35]
 
-用法：
-  python parse_srt.py <字幕.srt> [--target-sec 30] [--min-sec 25] [--max-sec 35]
-
-输出：JSON（stdout），字段：
-  cues    每条字幕: {index, startMs, endMs, durMs, text}
-  scenes  建议场景: {sceneIndex, startMs, endMs, sceneDurationMs, cueRange, text}
-标准 stderr 打印人类可读摘要，便于直接阅读。
+Kết quả: JSON ra stdout:
+  cues    từng câu: {index, startMs, endMs, durMs, text}
+  scenes  cảnh gợi ý: {sceneIndex, startMs, endMs, sceneDurationMs, cueRange, text}
+Tóm tắt dễ đọc in ra stderr.
 """
 from __future__ import annotations
 
@@ -100,30 +98,33 @@ def group_scenes(cues: list[dict], target_sec: float, min_sec: float, max_sec: f
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="SRT 解析 + 分镜建议")
-    p.add_argument("srt", help="字幕文件路径 (.srt)")
-    p.add_argument("--target-sec", type=float, default=30.0, help="每幕目标口播秒数（默认 30）")
-    p.add_argument("--min-sec", type=float, default=25.0, help="每幕最短秒数（默认 25）")
-    p.add_argument("--max-sec", type=float, default=35.0, help="每幕最长秒数（默认 35）")
+    if hasattr(sys.stdout, "reconfigure"):  # console Windows mặc định cp1252, in tiếng Việt sẽ lỗi
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    p = argparse.ArgumentParser(description="Đọc SRT + gợi ý chia cảnh")
+    p.add_argument("srt", help="File phụ đề (.srt)")
+    p.add_argument("--target-sec", type=float, default=30.0, help="Thời lượng mục tiêu mỗi cảnh, giây (mặc định 30)")
+    p.add_argument("--min-sec", type=float, default=25.0, help="Ngắn nhất mỗi cảnh, giây (mặc định 25)")
+    p.add_argument("--max-sec", type=float, default=35.0, help="Dài nhất mỗi cảnh, giây (mặc định 35)")
     args = p.parse_args(argv)
 
     try:
         raw = Path(args.srt).read_text(encoding="utf-8-sig")
     except OSError as e:
-        print(f"[err] 无法读取字幕: {e}", file=sys.stderr)
+        print(f"[lỗi] Không đọc được phụ đề: {e}", file=sys.stderr)
         return 1
 
     cues = parse_srt(raw)
     if not cues:
-        print("[err] 未解析到任何字幕条，请检查 SRT 格式", file=sys.stderr)
+        print("[lỗi] Không đọc được câu phụ đề nào, kiểm tra định dạng SRT", file=sys.stderr)
         return 1
     scenes = group_scenes(cues, args.target_sec, args.min_sec, args.max_sec)
 
     total_ms = cues[-1]["endMs"] - cues[0]["startMs"]
-    print(f"字幕条: {len(cues)}  总时长: {total_ms/1000:.1f}s  建议场景: {len(scenes)}", file=sys.stderr)
+    print(f"Số câu: {len(cues)}  Tổng: {total_ms/1000:.1f}s  Gợi ý: {len(scenes)} cảnh", file=sys.stderr)
     for s in scenes:
-        print(f"  幕{s['sceneIndex']:>2}  {s['startMs']/1000:6.1f}-{s['endMs']/1000:6.1f}s "
-              f"({s['sceneDurationMs']/1000:4.1f}s, 字幕{s['cueRange'][0]}-{s['cueRange'][1]}): "
+        print(f"  Cảnh {s['sceneIndex']:>2}  {s['startMs']/1000:6.1f}-{s['endMs']/1000:6.1f}s "
+              f"({s['sceneDurationMs']/1000:4.1f}s, câu {s['cueRange'][0]}-{s['cueRange'][1]}): "
               f"{s['text'][:40]}", file=sys.stderr)
 
     json.dump({"cues": cues, "scenes": scenes}, sys.stdout, ensure_ascii=False, indent=2)

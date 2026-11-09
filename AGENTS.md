@@ -15,12 +15,16 @@ Skill **whiteboard-video**: biến một chủ đề, kịch bản lời dẫn h
 - Python dùng `.venv` ở thư mục gốc (Windows `.venv\Scripts\python.exe`, macOS/Linux `.venv/bin/python`). Chưa có thì chạy `python scripts/prepare_env.py`.
 - Cần `ffmpeg` / `ffprobe` trong PATH.
 - Dự án video đặt trong `assets/whiteboard/<tên-dự-án>/`.
+- Tạo/sửa annotation xong thì chạy `scripts/validate_annotation.py` (kèm `--srt`) trước khi render.
+- Sửa code trong `scripts/` thì chạy `python -m unittest discover -s tests` (bằng Python trong `.venv`) trước khi commit.
 
 ## Giọng đọc (TTS)
 
-- Script: `scripts/tts_narration.py`. Engine chọn bằng `TTS_PROVIDER` trong `.env` hoặc `--provider cit|edge|vbee`.
+- Script: `scripts/tts_narration.py`. Engine chọn bằng `TTS_PROVIDER` trong `.env` hoặc `--provider cit|elevenlabs|edge|vbee`.
 - Mặc định **`cit` = CIT Voice Studio** chạy offline trên máy (`http://127.0.0.1:8001`). Người dùng phải mở ứng dụng trước; kiểm tra bằng `GET /health`. Giọng mặc định `Hải Đăng`; danh sách giọng ở `GET /voices`.
-- Mỗi engine một nhóm biến riêng: `CIT_VOICE`/`CIT_SPEED`, `EDGE_VOICE`/`EDGE_SPEED`, `VBEE_VOICE`/`VBEE_SPEED`. Xem `.env.example`.
+- **ElevenLabs** (`elevenlabs`): cần `ELEVENLABS_API_KEY`; `ELEVENLABS_VOICE` là voice_id hoặc tên giọng trong My Voices; model mặc định `eleven_v3` (có tiếng Việt). Xem giọng: `--list-voices --provider elevenlabs`.
+- Engine trả phí (ElevenLabs, Vbee): chạy `--dry-run` trước và báo người dùng số ký tự sẽ bị tính phí.
+- Mỗi engine một nhóm biến riêng: `CIT_VOICE`/`CIT_SPEED`, `ELEVENLABS_VOICE`/`ELEVENLABS_SPEED`, `EDGE_VOICE`/`EDGE_SPEED`, `VBEE_VOICE`/`VBEE_SPEED`. Xem `.env.example`.
 - Key nằm trong `.env` (đã gitignore). **Không** đọc to, chép hay commit key.
 
 ## Lối vào skill theo từng agent

@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-按新字幕时间轴重排多幕标注的时序（配合 tts_narration.py --retime-out 使用）。
+Co giãn thời gian vẽ trong annotation của nhiều cảnh theo mốc phụ đề mới
+(dùng cùng tts_narration.py --retime-out, chế độ "nhịp gọn").
 
-原理：新旧 SRT 字幕一一对应，取每条字幕的开始时刻（及末条结束）作为锚点，
-在锚点之间分段线性映射 旧全局时间 → 新全局时间。各幕按给定顺序首尾相接
-（全局起点 = 前面各幕 sceneDurationMs 之和），元素的 startMs / 结束时刻与
-幕边界都经映射后换回幕内时间；区域、顺序、方向等不变。
+Cách làm: câu phụ đề cũ và mới tương ứng một-một; lấy mốc bắt đầu mỗi câu (và mốc kết thúc
+câu cuối) làm điểm neo, nội suy tuyến tính từng đoạn: thời gian toàn cục cũ → mới. Các cảnh nối
+tiếp theo thứ tự truyền vào (mốc đầu cảnh = tổng sceneDurationMs các cảnh trước); startMs / mốc
+kết thúc của từng vùng và ranh giới cảnh được ánh xạ rồi đổi về thời gian trong cảnh.
+Vùng, thứ tự, hướng giữ nguyên.
 
-输出写到新文件（默认 <名称>.tight.annotation.json），不覆盖原标注。
+Ghi ra file mới (mặc định <tên>.tight.annotation.json), không ghi đè file gốc.
 
-用法：
+Dùng:
   python retime_annotations.py --old-srt input.srt --new-srt input.tight.srt \
       --annotations scene-01.annotation.json scene-02.annotation.json [--suffix .tight]
 """
@@ -45,17 +47,20 @@ def build_mapper(old: list[dict], new: list[dict]):
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="按新字幕时间轴重排标注时序")
-    p.add_argument("--old-srt", required=True, help="标注原本依据的 SRT")
-    p.add_argument("--new-srt", required=True, help="重排后的 SRT")
-    p.add_argument("--annotations", nargs="+", required=True, help="按播放顺序的 .annotation.json")
-    p.add_argument("--suffix", default=".tight", help="输出文件名后缀（默认 .tight）")
+    if hasattr(sys.stdout, "reconfigure"):  # console Windows mặc định cp1252, in tiếng Việt sẽ lỗi
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    p = argparse.ArgumentParser(description="Co giãn thời gian vẽ trong annotation theo SRT mới")
+    p.add_argument("--old-srt", required=True, help="SRT mà annotation đang dựa theo")
+    p.add_argument("--new-srt", required=True, help="SRT đã sắp lại mốc")
+    p.add_argument("--annotations", nargs="+", required=True, help="Các .annotation.json theo thứ tự phát")
+    p.add_argument("--suffix", default=".tight", help="Hậu tố tên file ra (mặc định .tight)")
     args = p.parse_args(argv)
 
     old = parse_srt(Path(args.old_srt).read_text(encoding="utf-8-sig"))
     new = parse_srt(Path(args.new_srt).read_text(encoding="utf-8-sig"))
     if len(old) != len(new) or not old:
-        print(f"[err] 新旧字幕条数不一致: {len(old)} vs {len(new)}", file=sys.stderr)
+        print(f"[lỗi] Số câu phụ đề cũ và mới khác nhau: {len(old)} vs {len(new)}", file=sys.stderr)
         return 1
     remap = build_mapper(old, new)
 

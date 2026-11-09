@@ -1,6 +1,6 @@
 ---
 name: whiteboard-video
-description: Làm video vẽ tay bảng trắng (whiteboard animation) trên nền giấy màu kem từ một chủ đề, một kịch bản lời dẫn hoặc file phụ đề SRT, ra thành phẩm hoàn chỉnh có giọng đọc và phụ đề. Quy trình - chủ đề → viết kịch bản → tạo giọng đọc sinh SRT theo giọng thật, hoặc đọc SRT → phân cảnh → tạo ảnh nét vẽ cùng phong cách → chia vùng theo mạch truyện (annotation.json / sequence / startMs / protectedRegions) → chỉnh trên trang xem trước → render MP4 bằng nét bút liền mạch (đi nét ink → tô màu color) → ghép cảnh, gắn phụ đề, ghép giọng đọc (mặc định CIT Voice Studio offline; hoặc Vbee / Edge TTS). Dùng khi người dùng đưa chủ đề, kịch bản/lời dẫn hoặc file SRT và muốn "làm video vẽ tay", "video whiteboard", "video bảng trắng", "biến phụ đề thành video vẽ tay", "từ chủ đề/kịch bản làm video hoàn chỉnh".
+description: Làm video vẽ tay bảng trắng (whiteboard animation) trên nền giấy màu kem từ một chủ đề, một kịch bản lời dẫn hoặc file phụ đề SRT, ra thành phẩm hoàn chỉnh có giọng đọc và phụ đề. Quy trình - chủ đề → viết kịch bản → tạo giọng đọc sinh SRT theo giọng thật, hoặc đọc SRT → phân cảnh → tạo ảnh nét vẽ cùng phong cách → chia vùng theo mạch truyện (annotation.json / sequence / startMs / protectedRegions) → chỉnh trên trang xem trước → render MP4 bằng nét bút liền mạch (đi nét ink → tô màu color) → ghép cảnh, gắn phụ đề, ghép giọng đọc (mặc định CIT Voice Studio offline; hoặc ElevenLabs / Vbee / Edge TTS). Dùng khi người dùng đưa chủ đề, kịch bản/lời dẫn hoặc file SRT và muốn "làm video vẽ tay", "video whiteboard", "video bảng trắng", "biến phụ đề thành video vẽ tay", "từ chủ đề/kịch bản làm video hoàn chỉnh".
 ---
 
 # Video vẽ tay bảng trắng từ SRT (mặt nạ theo vùng + nét bút liền mạch)
@@ -15,7 +15,8 @@ Khác với kiểu nhảy từng khung hay xoá hình chữ nhật, nét bút �
 
 | Hạng mục | Yêu cầu mặc định |
 |---|---|
-| Nền giấy | Ảnh tạo ra dùng màu giấy cũ kem ấm (`#F5EBD7`). Khi render, lấy mẫu màu nền ở gần bốn góc ảnh gốc (thụt vào trong); cấm nền trắng tinh. |
+| Nền giấy | Ảnh tạo ra dùng màu giấy cũ kem ấm (`#F5EBD7`); cấm nền trắng tinh. Khi render, điểm ảnh gần màu nền ở bốn góc ảnh gốc được chuẩn hoá về `#F5EBD7` (trùng màu hộp nền phụ đề; đổi bằng `--canvas-color`). |
+| Độ phân giải | Video `1920x1080` (cạnh dài 1920, giữ tỉ lệ ảnh). Xem thử nhanh: `--cap-long-edge 960`. |
 | Cách vẽ | Mỗi vùng vẽ bằng nét liền: đi nét `ink` (phác nét) → tô `color` (trả lại màu gốc), tỉ lệ thời gian `ink:color = 2:1`. |
 | Đường bút | `--ink-path grid` (lưới, mặc định, ổn định) hoặc `skeleton` (bám khung xương, hợp với ảnh nét rõ). |
 | Kiểu tô màu | `--color-fill contour-wipe` (quét theo viền, mặc định) hoặc `brush` (tô theo vệt bút). |
@@ -37,7 +38,7 @@ Mọi ảnh gốc của các cảnh phải cùng một ngôn ngữ hình ảnh. 
 
 Trong quy trình mặc định, **sau mỗi bước phải dừng lại và chờ người dùng xác nhận rõ ràng** rồi mới sang bước tiếp. Trước khi được xác nhận, không được tạo ảnh, annotation, ảnh xem trước, video hay file ghép của bước sau. Không được coi "chưa trả lời", "đã cho phép chung chung trước đó" hay "người dùng không phản đối" là xác nhận. Khi người dùng yêu cầu sửa bước trước, chỉ làm lại đúng bước đó, xong lại chờ xác nhận.
 
-Ngoại lệ duy nhất: **tạo xong file annotation JSON thì phải lập tức mở trang xem trước và nạp thư mục chứa JSON đó**. Việc này thuộc kết quả của bước 3, không cần chờ xác nhận riêng. Nếu File System Access API của trình duyệt đòi thao tác của người dùng, dùng giao diện trình duyệt chọn đúng thư mục đã biết; không được vì thế mà hỏi thêm xác nhận hay bảo người dùng tự mở.
+Ngoại lệ duy nhất: **tạo xong file annotation JSON thì phải lập tức chạy `validate_annotation.py`, sửa hết lỗi, rồi mở trang xem trước và nạp thư mục chứa JSON đó**. Việc này thuộc kết quả của bước 3, không cần chờ xác nhận riêng. Nếu agent điều khiển được trình duyệt, dùng giao diện trình duyệt chọn đúng thư mục đã biết; không được vì thế mà hỏi thêm xác nhận. Chỉ khi agent không thể mở trình duyệt có giao diện (chạy trên cloud/headless, hoặc hộp chọn thư mục của hệ điều hành bắt người dùng bấm), mới đưa cho người dùng đường dẫn tuyệt đối tới `assets/preview.html` và thư mục cần chọn, kèm hai bước: mở file bằng Chrome/Edge → bấm "Mở thư mục…".
 
 ## Ba kiểu đầu vào
 
@@ -59,16 +60,16 @@ Khi bắt đầu từ chủ đề hoặc kịch bản, dùng **giọng đọc d�
    <ENV_PY> scripts/tts_narration.py draft.srt --output narration.m4a \
        --retime-out input.srt --pause <từng mục trong PAUSES>            # độ dài giọng thật → mốc chính thức
    ```
-   `input.srt` là phụ đề cho mọi bước sau; `narration.m4a` là giọng đọc cuối cùng (bước 8 dùng lại cache). Báo cho người dùng: cách cắt câu, tổng thời lượng, giọng đã dùng, và mời nghe thử `narration.m4a`. Giọng/tốc độ/engine lấy theo `.env` (`TTS_PROVIDER` chọn engine; mỗi engine một nhóm `CIT_VOICE`/`CIT_SPEED`, `EDGE_VOICE`/`EDGE_SPEED`, `VBEE_VOICE`/`VBEE_SPEED`); người dùng chỉ định thì dùng `--provider` / `--voice` / `--speed`. **Xong thì dừng, chờ người dùng duyệt giọng đọc và cách cắt câu.**
+   `input.srt` là phụ đề cho mọi bước sau; `narration.m4a` là giọng đọc cuối cùng (bước 8 dùng lại cache). Báo cho người dùng: cách cắt câu, tổng thời lượng, giọng đã dùng, và mời nghe thử `narration.m4a`. Giọng/tốc độ/engine lấy theo `.env` (`TTS_PROVIDER` chọn engine; mỗi engine một nhóm `CIT_VOICE`/`CIT_SPEED`, `ELEVENLABS_VOICE`/`ELEVENLABS_SPEED`, `EDGE_VOICE`/`EDGE_SPEED`, `VBEE_VOICE`/`VBEE_SPEED`); người dùng chỉ định thì dùng `--provider` / `--voice` / `--speed`. Engine trả phí (ElevenLabs, Vbee): chạy thêm `--dry-run` trước và báo số ký tự sẽ bị tính phí. **Xong thì dừng, chờ người dùng duyệt giọng đọc và cách cắt câu.**
 
 1. **Đọc phụ đề, lên phương án hình (chưa tạo ảnh).** Dùng `scripts/parse_srt.py` tách SRT thành từng câu và gợi ý chia cảnh 20–35 giây/cảnh. Từ đó đưa ra phương án: mỗi cảnh có số thứ tự, ý chính, đối tượng trong hình, khoảng phụ đề tương ứng và `sceneDurationMs`. Mỗi cảnh chỉ một ý chính. **Xong thì dừng, chờ duyệt phương án.**
 2. **Tạo ảnh nét vẽ.** Chỉ làm sau khi phương án được duyệt. Theo "Quy chuẩn hình ảnh", tạo từng ảnh 16:9 nền giấy kem `#F5EBD7`, các đối tượng cách nhau đủ rộng để dễ chia vùng; không có chữ, ảnh chụp phức tạp, đối tượng chồng lên nhau hay yếu tố trái quy chuẩn. Nếu không tự tạo ảnh được, ghi prompt từng cảnh vào `IMAGE_PROMPTS.md` và nhờ người dùng tạo, lưu đúng tên `scene-XX-<tên>.png`. **Xong thì dừng, cho xem ảnh và chờ duyệt.**
-3. **Đọc phụ đề trước, xem ảnh sau, rồi chia vùng và mở trang xem trước.** Chỉ làm sau khi ảnh được duyệt. Đọc phụ đề của cảnh, **thực sự mở xem ảnh** và lấy kích thước pixel gốc; không được đoán hình chỉ từ phụ đề, cũng không được xếp thứ tự máy móc theo vị trí. Rút ra các sự kiện trong phụ đề, gắn từng đối tượng nhìn thấy trong ảnh với sự kiện, xếp thứ tự vẽ theo mạch "bối cảnh → nhân vật/đồ vật chính → hành động, xung đột hoặc biến đổi → phản ứng/kết quả". Sau đó tạo `<tên-ảnh>.annotation.json`. Tạo xong, lập tức mở `assets/preview.html` bằng trình duyệt mặc định và dùng nút "Mở thư mục" nạp **thư mục chứa file annotation** (toàn bộ `<tên>.png` + `<tên>.annotation.json`); không được chỉ đưa đường dẫn hay bảo người dùng tự làm. **Trang xem trước đã nạp xong thì dừng, chờ duyệt annotation và bản xem trước.**
+3. **Đọc phụ đề trước, xem ảnh sau, rồi chia vùng và mở trang xem trước.** Chỉ làm sau khi ảnh được duyệt. Đọc phụ đề của cảnh, **thực sự mở xem ảnh** và lấy kích thước pixel gốc; không được đoán hình chỉ từ phụ đề, cũng không được xếp thứ tự máy móc theo vị trí. Rút ra các sự kiện trong phụ đề, gắn từng đối tượng nhìn thấy trong ảnh với sự kiện, xếp thứ tự vẽ theo mạch "bối cảnh → nhân vật/đồ vật chính → hành động, xung đột hoặc biến đổi → phản ứng/kết quả". Sau đó tạo `<tên-ảnh>.annotation.json` và chạy `validate_annotation.py` (truyền mọi cảnh theo thứ tự cùng `--srt input.srt`) tới khi không còn lỗi; cảnh báo thì sửa hoặc nêu rõ cho người dùng. Tạo xong, lập tức mở `assets/preview.html` bằng trình duyệt mặc định và dùng nút "Mở thư mục" nạp **thư mục chứa file annotation** (toàn bộ `<tên>.png` + `<tên>.annotation.json`); không được chỉ đưa đường dẫn hay bảo người dùng tự làm. **Trang xem trước đã nạp xong thì dừng, chờ duyệt annotation và bản xem trước.**
 4. **Xuất ảnh kiểm tra vùng.** Chỉ làm sau khi annotation được duyệt. Dùng `render_annotation_preview.py` xuất ảnh đánh số/hướng vẽ, đối chiếu: thứ tự vùng khớp mạch truyện, mọi vùng nằm trong ảnh, đối tượng chồng lấn đã được `protectedRegions` bảo vệ. **Xong thì dừng, chờ duyệt ảnh kiểm tra.**
-5. **Chỉnh và lưu trên trang xem trước.** Chỉ làm sau khi ảnh kiểm tra được duyệt, trên trang xem trước đã mở và nạp đúng thư mục. Mặc định (chưa phát) hiện ảnh đầy đủ và các khung vùng. Canvas là **bản mô phỏng bằng hình chữ nhật**: kéo cạnh/góc để sửa `region`; khung bên phải sửa tên, hướng, **bắt đầu (ms) / kết thúc (ms)** (thời lượng = kết thúc − bắt đầu, chỉ đọc) và **phụ đề**; kéo danh sách để **đổi thứ tự** (tự đánh lại `sequence`); chọn vùng nào thì phụ đề tương ứng được tô sáng; kéo thanh thời gian hoặc bấm phát để xem (vùng chưa tới lượt không hiện); `direction` chỉ ảnh hưởng bản mô phỏng. Sửa xong bấm "Lưu cảnh này / Lưu tất cả" để ghi lại `.annotation.json` gốc (kèm `subtitle` của từng vùng, và đặt `sceneDurationMs` = thời điểm vùng cuối kết thúc + 0,5 giây). **Lưu xong thì dừng, chờ duyệt annotation và thời gian cuối cùng.**
-6. **Render bằng dòng lệnh.** Chỉ làm sau khi annotation và thời gian được duyệt. Dùng `render_stream_whiteboard.py` render từng cảnh ra MP4, kiểm tra ba thời điểm: mở đầu, giữa một vùng có chồng lấn, và cuối cảnh. **Xong thì dừng, chờ duyệt video từng cảnh.**
+5. **Chỉnh và lưu trên trang xem trước.** Chỉ làm sau khi ảnh kiểm tra được duyệt, trên trang xem trước đã mở và nạp đúng thư mục. Mặc định (chưa phát) hiện ảnh đầy đủ và các khung vùng. Canvas là **bản mô phỏng bằng hình chữ nhật**: kéo cạnh/góc để sửa `region`; khung bên phải sửa tên, hướng, **bắt đầu (ms) / kết thúc (ms)** (thời lượng = kết thúc − bắt đầu, chỉ đọc) và **phụ đề**; kéo danh sách để **đổi thứ tự vẽ**: các vùng đổi chỗ cho nhau trong các khung thời gian (mỗi vị trí giữ nguyên bắt đầu/kết thúc và câu phụ đề, `sequence` tự đánh lại), nên video đổi thứ tự theo mà nhịp lời đọc giữ nguyên; sửa mốc bắt đầu thì danh sách tự sắp lại theo thời gian; chọn vùng nào thì phụ đề tương ứng được tô sáng; kéo thanh thời gian hoặc bấm phát để xem (vùng chưa tới lượt không hiện); `direction` chỉ ảnh hưởng bản mô phỏng. Sửa xong bấm "Lưu cảnh này / Lưu tất cả" để ghi lại `.annotation.json` gốc (kèm `subtitle` của từng vùng, và đặt `sceneDurationMs` = thời điểm vùng cuối kết thúc + 0,5 giây). **Lưu xong thì dừng, chờ duyệt annotation và thời gian cuối cùng.**
+6. **Render bằng dòng lệnh.** Chỉ làm sau khi annotation và thời gian được duyệt. Chạy lại `validate_annotation.py` (annotation có thể đã sửa trên trang xem trước), rồi dùng `render_stream_whiteboard.py` render từng cảnh ra MP4 (mặc định 1920x1080), kiểm tra ba thời điểm: mở đầu, giữa một vùng có chồng lấn, và cuối cảnh. **Xong thì dừng, chờ duyệt video từng cảnh.**
 7. **Ghép các cảnh (khi có nhiều cảnh).** Chỉ làm sau khi mọi cảnh được duyệt. Dùng `merge_scenes.py` ghép theo thứ tự thành một video. **Xong thì dừng, chờ duyệt video ghép.**
-8. **Gắn phụ đề + ghép giọng đọc (mặc định với đầu vào chủ đề/kịch bản; với đầu vào SRT thì làm khi người dùng yêu cầu).** Chỉ làm sau khi video ghép được duyệt. Trước hết dùng filter `subtitles` của ffmpeg gắn `input.srt` vào hình (nền phụ đề màu giấy để không đè nét vẽ, xem mục "Lệnh" bước 8), sau đó chạy `tts_narration.py input.srt --video <video có phụ đề>` để ghép giọng (lấy từ cache, không gọi lại API). Kiểm tra khung đầu/giữa/cuối và phân bố khoảng lặng (`silencedetect`), bảo đảm giọng, phụ đề và hình khớp nhau. **Xong thì dừng, bàn giao video cuối.**
+8. **Gắn phụ đề + ghép giọng đọc (mặc định với đầu vào chủ đề/kịch bản; với đầu vào SRT thì làm khi người dùng yêu cầu).** Chỉ làm sau khi video ghép được duyệt. Trước hết dùng `burn_subtitles.py` gắn `input.srt` vào hình (nền phụ đề màu giấy để không đè nét vẽ, xem mục "Lệnh" bước 8), sau đó chạy `tts_narration.py input.srt --video <video có phụ đề>` để ghép giọng (lấy từ cache, không gọi lại API). Kiểm tra khung đầu/giữa/cuối và phân bố khoảng lặng (`silencedetect`), bảo đảm giọng, phụ đề và hình khớp nhau. **Xong thì dừng, bàn giao video cuối.**
 
 ## Thư mục dự án
 
@@ -81,7 +82,7 @@ assets/whiteboard/<tên-dự-án>/
   scene-01-<tên>.png
   scene-01-<tên>.annotation.json       # cùng tên với png
   scene-01-<tên>-whiteboard.mp4        # video cảnh
-  scene-01-<tên>-preview.mp4           # đoạn xem thử (trang xem trước tạo, độ phân giải thấp)
+  scene-01-<tên>-preview.mp4           # (tuỳ chọn) bản render xem thử nhanh: --cap-long-edge 960
   tts-cache/                           # giọng đọc từng câu (dùng lại, không tốn phí lần 2)
 ```
 
@@ -100,7 +101,8 @@ assets/whiteboard/<tên-dự-án>/
 - **Tổng thời lượng cảnh** `sceneDurationMs` lấy từ khoảng phụ đề của cảnh (`scenes[].sceneDurationMs` của `parse_srt.py`).
 - **Các vùng vẽ nối tiếp:** chỉ có một cây bút, nên các vùng trong cùng cảnh nên **nối tiếp nhau về thời gian** (`startMs` không chồng lên nhau): vùng sau bắt đầu tại `startMs + durationMs` của vùng trước (có thể thêm 100–300 ms nghỉ). Nếu `startMs` chồng nhau, renderer vẫn xử lý theo thứ tự, nhưng nhìn sẽ không còn là vẽ song song.
 - **Trong một vùng, ink → color:** `durationMs` của mỗi vùng được chia `ink:color = 2:1` thành đoạn đi nét và đoạn tô màu. `durationMs` lấy từ **thời gian bắt đầu/kết thúc** trên trang xem trước (kết thúc − bắt đầu), có thể khớp với thời lượng câu phụ đề tương ứng; ước lượng ban đầu có thể dùng 150 pixel/giây × quãng đường vẽ.
-- **Giữ hình cuối:** vẽ xong mọi vùng thì tự kéo dài tới `sceneDurationMs`, bảo đảm cuối cảnh giữ ảnh hoàn chỉnh ít nhất 0,5 giây.
+- **Giữ hình cuối:** vẽ xong mọi vùng thì tự kéo dài tới `sceneDurationMs`, bảo đảm cuối cảnh giữ ảnh hoàn chỉnh ít nhất 0,5 giây. Nếu vùng cuối xong muộn hơn `sceneDurationMs − 0,5 s`, video cảnh sẽ dài hơn khai báo.
+- **Khớp với lời đọc khi ghép:** các cảnh được nối liền nhau, nên tổng `sceneDurationMs` của các cảnh phải bằng thời lượng SRT, và mốc đầu mỗi cảnh phải trùng mốc câu đầu tiên của cảnh đó; nếu không, giọng đọc và hình lệch dần. `validate_annotation.py --srt` cảnh báo khi lệch.
 - `reveal.direction` với cách vẽ nét liền **không quyết định nét bút thật** (nét bút do khung xương/lưới tự sinh), chỉ dùng cho bản mô phỏng trên trang xem trước; giữ lại để trang xem trước hoạt động.
 
 ## Bất biến của mặt nạ (tầng dàn dựng, bắt buộc)
@@ -108,6 +110,7 @@ assets/whiteboard/<tên-dự-án>/
 - Tại thời điểm `t`, một vùng chỉ được hiện các pixel khi `reveal.startMs ≤ t` và không vượt quá tiến độ vẽ hiện tại; vùng chưa bắt đầu không được lộ bất kỳ nét, mảng màu hay hình ảnh nào.
 - **Phạm vi được phép** của mỗi vùng = khung `region` trừ đi `region` của **mọi vùng vẽ sau**, rồi trừ tiếp `reveal.protectedRegions` của chính nó. Nét bút bị giới hạn trong phạm vi này nên vùng sau không bị lộ sớm.
 - `protectedRegions` dùng cùng hệ toạ độ pixel nguyên như `region`, dùng khi khung quá rộng, đối tượng chồng nhau hoặc nét nền có thể lộ ra.
+- Thứ tự vẽ thật là thứ tự `reveal.startMs` (trùng thì theo `sequence`); `sequence` phải khớp thứ tự này (`validate_annotation.py` kiểm tra).
 - Renderer đã thực hiện đúng trình tự "chỉ vẽ trong phạm vi được phép → vùng sau và vùng bảo vệ tự nhiên không bị chạm"; bản mô phỏng trên trang xem trước dùng phép trừ `destination-out` tương đương để minh hoạ cùng cách dàn dựng.
 
 ## Ví dụ cấu hình
@@ -143,7 +146,7 @@ Mọi script render chạy bằng Python trong `.venv` của skill (cô lập th
 1. **Chuẩn bị môi trường** (lần đầu hoặc khi thiếu thư viện):
    ```bash
    python scripts/prepare_env.py --check   # chỉ kiểm tra; thành công thì dòng cuối in ENV_PY=<đường dẫn>
-   python scripts/prepare_env.py           # thiếu thì tạo .venv và cài opencv-python/numpy/av/Pillow/edge-tts
+   python scripts/prepare_env.py           # thiếu thì tạo .venv và cài thư viện theo requirements.txt
    ```
 2. **Kịch bản → SRT nháp** (đầu vào chủ đề/kịch bản): cắt theo câu (lời thoại trong ngoặc kép không bị tách, câu quá dài cắt ở dấu phẩy, câu quá ngắn gộp với câu sau); dòng tiêu đề `#` và dòng trống không được đọc; dòng trống chia đoạn, dòng cuối `PAUSES=` liệt kê số thứ tự câu cuối mỗi đoạn, dùng làm các tham số `tts_narration.py --pause`.
    ```bash
@@ -153,33 +156,40 @@ Mọi script render chạy bằng Python trong `.venv` của skill (cô lập th
    ```bash
    python scripts/parse_srt.py <phụ-đề.srt> --target-sec 30 --min-sec 25 --max-sec 35
    ```
-4. **Ảnh kiểm tra vùng (đánh số):**
+4. **Kiểm tra annotation** (chạy sau khi tạo/sửa annotation và trước khi render; thoát mã 1 nếu có lỗi):
    ```bash
-   <ENV_PY> scripts/render_annotation_preview.py <ảnh> <annotation> <ảnh-kiểm-tra>
+   <ENV_PY> scripts/validate_annotation.py canh1.annotation.json canh2.annotation.json --srt input.srt
+   ```
+   Lỗi: JSON sai, toạ độ không nguyên/vượt ảnh, `canvas` khác ảnh, `sequence` không liên tục hoặc khác thứ tự vẽ (`startMs`). Cảnh báo: vùng chồng thời gian, vùng bị che hết, nét vẽ ngoài mọi vùng (sẽ hiện đột ngột cuối cảnh), cảnh dài hơn `sceneDurationMs`, phụ đề không có trong SRT, vùng vẽ lệch câu đang đọc, tổng thời lượng các cảnh khác SRT.
+
+   **Ảnh kiểm tra vùng (đánh số theo thứ tự vẽ thật, kèm mốc thời gian):**
+   ```bash
+   <ENV_PY> scripts/render_annotation_preview.py <ảnh> <annotation> <ảnh-kiểm-tra> [--font <file.ttf>]
    ```
 5. **Trang xem trước (không cần server):** mở `assets/preview.html` bằng Chrome / Edge, bấm "Mở thư mục" chọn thư mục → nạp mọi ảnh + annotation cùng tên → kéo chỉnh → "Lưu" ghi lại file gốc. Ghi trực tiếp cần File System Access API (Chrome/Edge); trình duyệt khác thì tải về rồi chép đè thủ công. Render vẫn chạy bằng dòng lệnh (bước 6).
 6. **Render một cảnh:**
    ```bash
    <ENV_PY> scripts/render_stream_whiteboard.py <ảnh> <annotation> <ra.mp4> assets/drawing-hand.png \
-       [--ink-path grid|skeleton] [--color-fill contour-wipe|brush] [--total-ms <mili-giây>]
+       [--ink-path grid|skeleton] [--color-fill contour-wipe|brush] [--total-ms <mili-giây>] \
+       [--cap-long-edge 1920] [--canvas-color "#F5EBD7"]
    ```
-   Không có `--total-ms` thì dùng `sceneDurationMs` trong annotation. Dòng cuối in `OUTPUT=<đường dẫn>`.
+   Không có `--total-ms` thì dùng `sceneDurationMs` trong annotation. Mặc định ra 1920x1080 (ảnh 16:9); xem thử nhanh thì `--cap-long-edge 960`. Dòng cuối in `OUTPUT=<đường dẫn>`.
 7. **Ghép các cảnh:**
    ```bash
    <ENV_PY> scripts/merge_scenes.py --inputs canh1.mp4 canh2.mp4 canh3.mp4 --output final.mp4
    ```
-8. **Gắn phụ đề** (chữ xám đậm trên nền màu giấy, không đè nét vẽ):
+8. **Gắn phụ đề** (chữ xám đậm trên hộp nền màu giấy `#F5EBD7`, không đè nét vẽ; giữ nguyên âm thanh nếu có; đường dẫn có dấu, khoảng trắng, ổ đĩa Windows đều chạy được):
    ```bash
-   ffmpeg -i final.mp4 -vf "subtitles=input.srt:force_style='FontName=Arial,FontSize=15,PrimaryColour=&H00303030,OutlineColour=&H10D7EBF5,BorderStyle=3,Outline=6,Shadow=0,MarginV=14'" \
-       -c:v libx264 -crf 20 -pix_fmt yuv420p -movflags +faststart final-sub.mp4
+   <ENV_PY> scripts/burn_subtitles.py final.mp4 input.srt --output final-sub.mp4 \
+       [--font Arial] [--font-size 15] [--margin 14] [--text-color "#303030"] [--box-color "#F5EBD7"]
    ```
-   Trên Windows, đường dẫn trong `subtitles=` nên là đường dẫn tương đối (tránh dấu hai chấm của ổ đĩa bị hiểu nhầm là cú pháp filter).
-9. **Giọng đọc:** tạo giọng từng câu theo SRT, khớp mốc thời gian rồi ghép vào video (không render lại hình). Engine `--provider cit|vbee|edge` (mặc định theo `TTS_PROVIDER` trong `.env`, không đặt thì `cit`): `cit` là **CIT Voice Studio** chạy offline trên máy (`CIT_BASE_URL`, mặc định `http://127.0.0.1:8001`; gọi từ máy khác cần `CIT_API_KEY`), miễn phí, `--voice` là **tên giọng** đúng như `GET /voices` (có dấu, vd `Hải Đăng`, `Trúc Ly`, `Mai Anh`), mặc định `Hải Đăng` (`CIT_VOICE`; mô hình không có giọng này thì dùng giọng mặc định của mô hình); trước khi chạy phải mở ứng dụng, script tự kiểm tra `/health` và tên giọng, báo lỗi nếu chưa sẵn sàng. Tài liệu API: `<CIT_BASE_URL>/cit-voice-studio.md`. `vbee` cần `VBEE_APP_ID` / `VBEE_ACCESS_TOKEN`, tính phí theo ký tự, `--voice` là **mã giọng đầy đủ** copy từ giao diện Vbee (gửi nguyên văn cho API); `edge` dùng [rany2/edge-tts](https://github.com/rany2/edge-tts), miễn phí, mặc định `vi-VN-NamMinhNeural` (nữ: `vi-VN-HoaiMyNeural`). Tốc độ `--speed` (1.0 = bình thường; với Edge, 1.1 → `+10%`). Giọng từng câu được lưu ở `<thư-mục-srt>/tts-cache/`, chạy lại không gọi API lần nữa.
+9. **Giọng đọc:** tạo giọng từng câu theo SRT, khớp mốc thời gian rồi ghép vào video (không render lại hình). Engine `--provider cit|elevenlabs|vbee|edge` (mặc định theo `TTS_PROVIDER` trong `.env`, không đặt thì `cit`): `cit` là **CIT Voice Studio** chạy offline trên máy (`CIT_BASE_URL`, mặc định `http://127.0.0.1:8001`; gọi từ máy khác cần `CIT_API_KEY`), miễn phí, `--voice` là **tên giọng** đúng như `GET /voices` (có dấu, vd `Hải Đăng`, `Trúc Ly`, `Mai Anh`), mặc định `Hải Đăng` (`CIT_VOICE`; mô hình không có giọng này thì dùng giọng mặc định của mô hình); trước khi chạy phải mở ứng dụng, script tự kiểm tra `/health` và tên giọng, báo lỗi nếu chưa sẵn sàng. Tài liệu API: `<CIT_BASE_URL>/cit-voice-studio.md`. `elevenlabs` là **ElevenLabs** (online, tính phí theo ký tự, giọng tự nhiên nhất), cần `ELEVENLABS_API_KEY`; `--voice` / `ELEVENLABS_VOICE` là **voice_id hoặc tên giọng** trong "My Voices" của tài khoản (script tự tra); model `ELEVENLABS_MODEL` mặc định `eleven_v3` (có tiếng Việt; `eleven_flash_v2_5` rẻ hơn; `eleven_multilingual_v2` **không** có tiếng Việt), gửi kèm `language_code=vi` (`ELEVENLABS_LANGUAGE`) và câu trước/sau để ngữ điệu liền mạch; tuỳ chọn `ELEVENLABS_STABILITY` / `ELEVENLABS_SIMILARITY` / `ELEVENLABS_STYLE` / `ELEVENLABS_SEED`. Script kiểm tra model có tiếng Việt và tự thử lại khi bị giới hạn tốc độ. **Trước khi tạo giọng bằng engine trả phí (elevenlabs, vbee), chạy `--dry-run` và báo người dùng số ký tự sẽ bị tính phí.** Xem giọng: `--list-voices --provider elevenlabs`; xem model: `--list-models --provider elevenlabs`. `vbee` cần `VBEE_APP_ID` / `VBEE_ACCESS_TOKEN`, tính phí theo ký tự, `--voice` là **mã giọng đầy đủ** copy từ giao diện Vbee (gửi nguyên văn cho API); `edge` dùng [rany2/edge-tts](https://github.com/rany2/edge-tts), miễn phí, mặc định `vi-VN-NamMinhNeural` (nữ: `vi-VN-HoaiMyNeural`). Tốc độ `--speed` (1.0 = bình thường; CIT 0,75–1,5; Vbee 0,1–1,9; Edge và ElevenLabs 0,5–2,0, chỉnh sau khi tạo bằng `atempo`, giữ cao độ). Giọng từng câu được lưu ở `<thư-mục-srt>/tts-cache/`, chạy lại không gọi API lần nữa.
    ```bash
    <ENV_PY> scripts/tts_narration.py <phụ-đề.srt> --output narration.m4a --video final-sub.mp4 \
-       [--provider cit|vbee|edge] [--voice <tên/mã-giọng>] [--speed 1.1]
+       [--provider cit|elevenlabs|vbee|edge] [--voice <tên/mã-giọng>] [--speed 1.1] [--dry-run]
+   <ENV_PY> scripts/tts_narration.py --list-voices --provider elevenlabs
    ```
-   Dòng cuối in `OUTPUT=<video có giọng>` (mặc định `<video>-voice.mp4`). Câu nào dài hơn khung thời gian thì tự tăng tốc và cảnh báo. Mặc định cắt khoảng lặng đầu/cuối mỗi câu (tắt bằng `--no-trim`).
+   Dòng cuối in `OUTPUT=<video có giọng>` (mặc định `<video>-voice.mp4`). Câu nào dài hơn khung thời gian thì tự tăng tốc và cảnh báo (quá x1,35 thì báo khó nghe, nên dùng nhịp gọn `--retime-out`). Hai câu trùng/chồng mốc (khung < 150 ms) thì báo lỗi rõ ràng thay vì treo. Mặc định cắt khoảng lặng đầu/cuối mỗi câu (tắt bằng `--no-trim`).
 10. **Nhịp gọn (tuỳ chọn, cho đầu vào SRT có nhiều khoảng lặng):** sắp lại phụ đề theo độ dài giọng thật, rồi co giãn thời gian vẽ trong annotation theo từng đoạn tuyến tính; render lại thì hình và giọng khớp nhau, gần như không có khoảng trống:
     ```bash
     <ENV_PY> scripts/tts_narration.py input.srt --output narration.m4a \
@@ -193,6 +203,7 @@ Mọi script render chạy bằng Python trong `.venv` của skill (cô lập th
 
 Trước/sau khi render, xác nhận:
 
+- `validate_annotation.py` (mọi cảnh theo thứ tự, kèm `--srt`) không còn lỗi; cảnh báo đã được sửa hoặc báo cho người dùng.
 - Khung đầu tiên là nền giấy kem sạch, chưa lộ nét nào.
 - Đã đọc phụ đề tương ứng và thực sự xem ảnh gốc; `canvas` khớp kích thước ảnh, mọi `region` là pixel nguyên và nằm trong ảnh.
 - `sequence`, `startMs` khớp trình tự sự kiện trong phụ đề; số thứ tự/nhãn/vùng trên ảnh kiểm tra lấy từ cùng một file annotation.
