@@ -117,6 +117,8 @@ class FakeEleven:
                               {"voice_id": "ZzZzZzZzZzZzZzZzZzZz", "name": "George", "category": "premade"}]
                     return self._json(200, {"voices": [v for v in voices if search in v["name"].lower()],
                                             "has_more": False, "total_count": 2})
+                if url.path == "/v1/user/subscription":
+                    return self._json(200, {"tier": "creator", "character_count": 1000, "character_limit": 100000})
                 if url.path == f"/v1/voices/{VOICE_ID}":
                     return self._json(200, {"voice_id": VOICE_ID, "name": "Linh"})
                 return self._json(404, {"detail": {"status": "not_found", "message": "not found"}})
@@ -239,6 +241,7 @@ class ElevenLabsTest(unittest.TestCase):
                 self.assertEqual(fake.tts_bodies, [])
                 total = sum(len(c["text"]) for c in tts.parse_srt(SRT))
                 self.assertIn(f"CHARS={total}", out)
+                self.assertIn("còn 99000 ký tự", out)
         finally:
             fake.close()
 

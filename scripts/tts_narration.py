@@ -387,6 +387,24 @@ class ElevenLabsClient:
     def models(self) -> list[dict]:
         return self._json("GET", "/v1/models")
 
+    def subscription(self) -> dict:
+        return self._json("GET", "/v1/user/subscription")
+
+    def print_quota(self, needed_chars: int) -> None:
+        """In số ký tự còn lại của tài khoản (cần quyền User: Read; thiếu quyền thì bỏ qua)."""
+        try:
+            sub = self.subscription()
+        except ElevenLabsError:
+            return
+        used, limit = sub.get("character_count"), sub.get("character_limit")
+        if not isinstance(used, int) or not isinstance(limit, int):
+            return
+        left = limit - used
+        print(f"  Tài khoản ElevenLabs ({sub.get('tier', '?')}): đã dùng {used}/{limit}, còn {left} ký tự/credit")
+        if needed_chars > left:
+            print(f"  [cảnh báo] Cần khoảng {needed_chars} ký tự nhưng chỉ còn {left}: có thể dừng giữa chừng vì hết quota "
+                  "(model rẻ hơn như eleven_flash_v2_5 tốn ít credit hơn mỗi ký tự)")
+
     def voices(self, search: str | None = None, max_pages: int = 10) -> list[dict]:
         out: list[dict] = []
         token = None
@@ -697,6 +715,9 @@ def _eleven_client() -> ElevenLabsClient:
                             use_context=True if context is None else context)
 
 
+_QUOTA_CHECKS: dict[str, Callable[[int], None]] = {}  # engine → hàm in quota còn lại (nếu engine hỗ trợ)
+
+
 def setup_provider(provider: str, voice_arg: str | None, speed: float) -> tuple[SynthFn, str, str, str]:
     """Trả về (hàm tạo giọng, khoá cache của giọng, đuôi file, tên giọng hiển thị)."""
     env_voice = _env_voice(provider)
@@ -754,6 +775,7 @@ def setup_provider(provider: str, voice_arg: str | None, speed: float) -> tuple[
                               seed=seed, previous_text=prev, next_text=nxt)
             apply_speed(raw, out, speed)
 
+        _QUOTA_CHECKS["elevenlabs"] = client.print_quota
         extras = json.dumps({"lang": language, "settings": settings, "seed": seed}, sort_keys=True)
         return synth, f"{voice_id}@{model}|{extras}", ".mp3", voice_name
 
@@ -914,6 +936,8 @@ def main(argv=None) -> int:
     chars = sum(len(c["text"]) for c, _ in todo)
     print(f"{args.provider}: {len(cues)} câu, giọng {voice_label}, tốc độ {args.speed} — "
           f"cần tạo {len(todo)} câu ({chars} ký tự), {len(cues) - len(todo)} câu có sẵn trong cache")
+    if chars and args.provider in _QUOTA_CHECKS:
+        _QUOTA_CHECKS[args.provider](chars)
     if args.dry_run:
         if args.provider in ("elevenlabs", "vbee"):
             print("  (engine trả phí theo ký tự; số ký tự trên là phần sẽ bị tính phí)")
